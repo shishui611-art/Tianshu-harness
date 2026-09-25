@@ -7,7 +7,7 @@
  * 20+ 调用方的既有 import 路径不变。
  */
 export * from './star-domain-data.js'
-import { STAR_DOMAINS, type StarDomainId } from './star-domain-data.js'
+import { STAR_DOMAINS, type StarDomain, type StarDomainId } from './star-domain-data.js'
 
 /** Synchronous delegate to registry.
  *  The registry singleton is initialized at module load time, so by the time
@@ -95,6 +95,36 @@ export interface ActiveStarDomain {
   volatileBlock: string
   motto: string
   courageThreshold: number
+  /** 任务模式展示三元组（显示名/适用场景/做法）。缺省时 UI 回退 name/tagline。
+   *  与 StarDomain.taskMode 同源——会话状态里必须带上，否则 /domain status、
+   *  切换提示与选择面板在 mid-session 切换后拿不到白话描述。 */
+  taskMode?: StarDomainTaskMode
+}
+
+/** 任务模式对外显示三元组（与 star-domain-data.ts 的 StarDomain.taskMode 同构）。 */
+export type StarDomainTaskMode = NonNullable<StarDomain['taskMode']>
+
+/** 显示名 / 场景 / 做法三个 helper 的入参——只要求相关字段存在，且 taskMode 可缺
+ *  （custom 域与 ActiveStarDomain 都可能没有），避免调用方被迫做非空断言。 */
+type TaskModeView = {
+  name: string
+  tagline?: string
+  taskMode?: StarDomainTaskMode
+}
+
+/** UI 显示名：taskMode.name 优先，缺省回退星域名（custom 域无 taskMode 时仍是星名）。 */
+export function domainDisplayName(domain: Pick<TaskModeView, 'name' | 'taskMode'>): string {
+  return domain.taskMode?.name?.trim() || domain.name
+}
+
+/** 适用场景文案：taskMode.scenario 优先，缺省回退 tagline（custom 域）——不返回空白。 */
+export function domainScenario(domain: Pick<TaskModeView, 'name' | 'tagline' | 'taskMode'>): string {
+  return domain.taskMode?.scenario?.trim() || domain.tagline?.trim() || ''
+}
+
+/** 做法文案：taskMode.how 优先，缺省回退空串（调用方自决是否显示该行）。 */
+export function domainHow(domain: { taskMode?: StarDomainTaskMode }): string {
+  return domain.taskMode?.how?.trim() || ''
 }
 
 /** Auto 关闭关键词路由时的固定落点；亦为 auto 池路由未命中/平手时的回退。
@@ -146,6 +176,7 @@ export function resolveActiveDomain(
       volatileBlock: definition.volatileBlock,
       motto: definition.motto,
       courageThreshold: definition.courageThreshold,
+      ...(definition.taskMode ? { taskMode: definition.taskMode } : {}),
     },
     matchedKeywords,
     reason: matchedId ? 'keyword' : 'fallback',

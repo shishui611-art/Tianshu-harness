@@ -58,13 +58,16 @@ export interface ThemePaletteDef {
   background: 'dark' | 'light'
   /** /theme picker 描述文案。 */
   description: string
-  /** 语气档(2026-09,主题风格化):消费方(greeting 问候池 / guide 首启文案)
-   *  统一读 theme.voice,缺省 = 'default' 中性。新主题标 voice 即全套生效。 */
+  /** 语气档(2026-09 去人设后仅剩色彩语义):消费方(greeting 问候池 / guide 首启文案)
+   *  与 missionShimmer 色带读 theme.voice,缺省 = 'default' 中性。
+   *  ⚠ 文案不再随 voice 变——角色台词已在去人设时移除，voice 现在只影响扫光色带。 */
   voice?: ThemeVoice
 }
 
-/** 语气档:default(中性)/ playful(粉彩活泼·星灵人设)/ tech(科技冷静·Nova 人设)。
- *  与 api/greeting.ts 的 GreetingVoice 同构(结构化兼容,无需转换)。 */
+/** 语气档:default(中性)/ playful(粉彩活泼)/ tech(科技冷静)。
+ *  与 api/greeting.ts 的 GreetingVoice 同构(结构化兼容,无需转换)。
+ *  去人设后三档文案完全一致（见 api/greeting.ts 的 VOICE_POOLS 与
+ *  tui/format/welcome.ts 的 GUIDE_INTRO），voice 仅保留色彩/扫光语义。 */
 export type ThemeVoice = 'default' | 'playful' | 'tech'
 
 // ── Pastel — soft, pleasant, 二次元-inspired ──────────────────────
@@ -74,7 +77,7 @@ export type ThemeVoice = 'default' | 'playful' | 'tech'
 // assistantColor 显式暖纸白——正文不再跟随 secondary。
 const PASTEL: ThemePaletteDef = {
   background: 'dark',
-  description: '二次元粉彩。薄荷 × 樱花粉——小天和你的糖果色终端。',
+  description: '二次元粉彩。薄荷 × 樱花粉——糖果色终端。',
   voice: 'playful',
   truecolor: {
     primary: '#a8e6cf',   // mint green — search/grep/glob
@@ -110,7 +113,7 @@ const PASTEL: ThemePaletteDef = {
 // inlineCode 单独取冰蓝 #7aa2f7(H221,离粉红 122°、离 primary 青 30°)。
 const CYBERPUNK: ThemePaletteDef = {
   background: 'dark',
-  description: '赛博朋克·霓虹夜城。电青 × 品红粉 synthwave——Nova 的终端夜之城。',
+  description: '赛博朋克·霓虹夜城。电青 × 品红粉 synthwave——霓虹夜之城。',
   voice: 'tech',
   truecolor: {
     primary: '#48c6e2',   // cyan-400 — desaturated cyan to avoid rgb halation

@@ -256,7 +256,7 @@ describe('DeepSeek 计价时段段（pricingPhase，W1）', () => {
 describe('formatPermissionModeLine（输入框下方权限模式行，CC parity）', () => {
   it('默认 auto-safe，含 shift+tab 提示', () => {
     const plain = stripAnsi(formatPermissionModeLine({}, theme))
-    assert.ok(plain.includes('⏵ 自动'), `should show 自动: ${plain}`)
+    assert.ok(plain.includes('⏵ 帮我批准'), `should show 帮我批准: ${plain}`)
     assert.ok(
       plain.includes('(shift+tab plan · /ask 问答)'),
       `should keep the shortcut hint compact: ${plain}`,
@@ -279,19 +279,19 @@ describe('formatPermissionModeLine（输入框下方权限模式行，CC parity�
     assert.ok(plain.includes('draft-1.md'), `draft path: ${plain}`)
   })
 
-  it('全自动显示对外主词', () => {
+  it('完全访问显示对外主词', () => {
     const plain = stripAnsi(formatPermissionModeLine({ approvalMode: 'dangerously-skip-permissions' }, theme))
-    assert.ok(plain.includes('⏵ 全自动'), `should show 全自动: ${plain}`)
+    assert.ok(plain.includes('⏵ 完全访问'), `should show 完全访问: ${plain}`)
   })
 
-  it('监督显示对外主词', () => {
+  it('请求批准显示对外主词', () => {
     const plain = stripAnsi(formatPermissionModeLine({ approvalMode: 'manual' }, theme))
-    assert.ok(plain.includes('⏵ 监督'))
+    assert.ok(plain.includes('⏵ 请求批准'))
   })
 
-  it('auto-accept 对外显示自动，不显示全自动', () => {
+  it('auto-accept(历史别名)对外显示帮我批准，不冒充完全访问', () => {
     const plain = stripAnsi(formatPermissionModeLine({ approvalMode: 'auto-accept' }, theme))
-    assert.ok(plain.includes('⏵ 自动'), `should show 自动: ${plain}`)
-    assert.ok(!plain.includes('全自动'), `must not impersonate 全自动: ${plain}`)
+    assert.ok(plain.includes('⏵ 帮我批准'), `should show 帮我批准: ${plain}`)
+    assert.ok(!plain.includes('完全访问'), `must not impersonate 完全访问: ${plain}`)
   })
 })

@@ -31,18 +31,29 @@ test('算法模板:任何小时都有非空短文案(≤25 字)', () => {
   }
 })
 
-test('语气池(主题风格化):playful/tech 各时段非空 ≤25 字,且与 default 池有实差', () => {
-  for (const voice of ['playful', 'tech'] as const) {
+test('语气池(2026-09 去人设):三档 voice 共用同一套中性文案,均非空 ≤25 字', () => {
+  for (const voice of ['default', 'playful', 'tech'] as const) {
     for (const hour of [5, 9, 12, 15, 20, 23]) {
       const t = pickGreetingTemplate(hour, voice)
       assert.ok(t.length > 0, `${voice} hour=${hour} 有文案`)
       assert.ok(t.length <= 25, `${voice} hour=${hour} 过长:${t}`)
     }
-    // 差异抽查:default 池抽样 20 次近似其全集,voice 抽样 12 次——若 voice 池
-    // 被误抄成 default(复制回归),voice 样本必全落在 default 集内,断言可抓。
-    const defaultSet = new Set(Array.from({ length: 20 }, () => pickGreetingTemplate(9)))
-    const voiceSamples = Array.from({ length: 12 }, () => pickGreetingTemplate(9, voice as 'playful' | 'tech'))
-    assert.ok(voiceSamples.some((t) => !defaultSet.has(t)), `${voice} 池与 default 池应有差异文案`)
+  }
+  // 去人设后三档必须完全同池——不再有"角色化分支"。此前 playful/tech 与 default
+  // 有实差，现在是同一套文案（角色台词已删）。
+  // 断言口径：每档抽 200 次（远大于池容量 8），三档的抽样并集必须逐一相等。
+  // 小样本「子集」断言不可靠——12 次抽 8 条池未必覆盖，会偶发假红。
+  for (const hour of [9, 15, 20]) {
+    const sample = (voice?: 'playful' | 'tech') =>
+      new Set(Array.from({ length: 200 }, () => pickGreetingTemplate(hour, voice)))
+    const base = [...sample()].sort()
+    for (const voice of ['playful', 'tech'] as const) {
+      assert.deepEqual(
+        [...sample(voice)].sort(),
+        base,
+        `${voice} hour=${hour} 应与 default 完全同池(去人设后不再有角色化池)`,
+      )
+    }
   }
 })
 

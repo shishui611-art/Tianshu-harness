@@ -75,7 +75,7 @@ const ZH: CockpitText = {
     reasoning: '推理',
     prewarm: '预热',
     speculative: '投机预读 (hits/enqueued)',
-    domain: '星域',
+    domain: '任务模式',
   },
   mcp: { tools: '工具', connected: '已连' },
   trace: { events: '事件' },

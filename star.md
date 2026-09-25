@@ -1,5 +1,7 @@
 # 天枢（Tianshu Harness）
 
+> **本文为历史叙事存档，不是现行使用说明。** 下文出现的「星域」是产品早期命名，现行对外的叫法是「**任务模式**」：命令 `/task-mode`（`/domain` 为旧别名仍可用），16 个模式的显示名与用法见 [README「任务模式」](README.md#任务模式同一模型的不同工作方式) 与 [用户手册](docs/user-guide.md#任务模式)。叙事内容保持原貌，不作改写。
+
 面向 Foundation Model Agent 的认知运行时（CVM）——稳定交付、证据门禁、不虚报完成。Node.js 24+ / TypeScript strict / T9 纯 ANSI 渲染引擎 / node:test。前缀缓存全模型适用（各家模型长会话稳态 98–99%，DeepSeek V4 另有针对性优化）。
 
 ## 起源

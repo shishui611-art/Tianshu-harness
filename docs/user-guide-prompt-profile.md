@@ -93,7 +93,7 @@ npm run prefix:budget -- --json  # 机器可读
 行为护栏**不受档位影响**，没有开关，这是有意的：
 
 - `static.ts` 的 rules / delivery-contract / workflow / security / tool-usage
-- 星域的 volatileBlock 与 systemPromptSuffix
+- 任务模式的 volatileBlock 与 systemPromptSuffix（`star-domain.ts` / `star-domain-data.ts`）
 
 护栏起作用的时刻，正是 agent 没意识到自己跑偏的时候——它不会主动去召回。
 历史上把胶囊正文改成按需 recall 曾在同一天被回滚（`0c776b9` → `17b496a`，

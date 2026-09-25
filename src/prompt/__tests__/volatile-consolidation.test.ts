@@ -11,7 +11,7 @@ describe('three-zone layout: frozen + consolidated + working', () => {
 
   it('buildConsolidatedBlock renders habituated fields in <consolidated> tag', () => {
     const consolidated = buildConsolidatedBlock(new Map([
-      ['activeDomain', '<star-domain name="tianshu" motto="test">block</star-domain>'],
+      ['activeDomain', '<star-domain name="天枢" task-mode="项目统筹">block</star-domain>'],
       ['lessons', '<historical-lessons>\n- lesson 1\n</historical-lessons>'],
     ]))
     assert.ok(consolidated.startsWith('<consolidated>'))
@@ -28,7 +28,7 @@ describe('three-zone layout: frozen + consolidated + working', () => {
   it('three-zone: FROZEN is byte prefix of FROZEN+CONSOLIDATED', () => {
     const frozen = buildStableVolatileBlock(baseCtx)
     const consolidated = buildConsolidatedBlock(new Map([
-      ['domain', '<star-domain name="test" motto="m">b</star-domain>'],
+      ['domain', '<star-domain name="test" task-mode="测试模式">b</star-domain>'],
     ]))
     const combined = frozen + '\n' + consolidated
     assert.ok(combined.startsWith(frozen))
@@ -37,7 +37,7 @@ describe('three-zone layout: frozen + consolidated + working', () => {
   it('three-zone: FROZEN+CONSOLIDATED is byte prefix of full output', () => {
     const frozen = buildStableVolatileBlock(baseCtx)
     const consolidated = buildConsolidatedBlock(new Map([
-      ['domain', '<star-domain name="test" motto="m">b</star-domain>'],
+      ['domain', '<star-domain name="test" task-mode="测试模式">b</star-domain>'],
     ]))
     const dynamic = buildDynamicAppendix({
       ...baseCtx,

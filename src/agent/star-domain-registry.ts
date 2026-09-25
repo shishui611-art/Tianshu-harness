@@ -309,6 +309,17 @@ function parseDomainCard(content: string, fallbackId: string): StarDomain {
   const motto = sanitizeString(fm.motto, 'motto')
   const volatileBlock = sanitizeString(fm.volatileBlock, 'volatileBlock')
 
+  // 任务模式展示三元组（可选）。custom 域历来只给 name/tagline——缺省时整个字段
+  // 缺席，UI 侧回退 tagline/expertise（见 star-domain.ts 的 domainScenario），
+  // 绝不因缺 taskMode 报错或丢字段。三个子字段任一为空则视为未声明：半截的
+  // 三元组会在面板里渲染出空行，不如整体回退。
+  const taskModeName = sanitizeString(fm.taskModeName, 'taskModeName')
+  const taskModeScenario = sanitizeString(fm.taskModeScenario, 'taskModeScenario')
+  const taskModeHow = sanitizeString(fm.taskModeHow, 'taskModeHow')
+  const taskMode = taskModeName && taskModeScenario && taskModeHow
+    ? { name: taskModeName, scenario: taskModeScenario, how: taskModeHow }
+    : undefined
+
   return {
     id: id as StarDomainId,
     name,
@@ -325,6 +336,7 @@ function parseDomainCard(content: string, fallbackId: string): StarDomain {
     ),
     keywords,
     isCustom: true,
+    ...(taskMode ? { taskMode } : {}),
     toolWhitelist,
     systemPromptSuffix: body,
     uiPersona: {

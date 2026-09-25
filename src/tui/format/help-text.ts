@@ -22,7 +22,7 @@ export const HELP_TEXT = `Available commands:
 /scout <诊断目标> [--dims 前端,后端,集成] — 巡天侦察蜂群：并行只读诊断，交付实测核对清单（不写文件）
 /council <task> [--seats id1,id2,...] [--rounds 1-2] — Convene a star-domain council (single round; --rounds 2 enables a rebuttal round)
 /starflow <任务描述> — 星流编排：需求澄清 → council 评审 → team 波次 → galaxy 攻坚 → 交付门禁，可 resume
-/galaxy <任务描述> — 星河集群：任务按维度拆解，由不同星域并行执行
+/galaxy <任务描述> — 星河集群：任务按维度拆解，由不同任务模式并行执行
 /tasks — 子代理任务面板（查看运行中/已完成，切入 f / 停止 x）
 /enter <orderId> [prompt] — 恢复一个子代理会话继续跑
 /team-resume [groupId] — Resume team execution from wave checkpoint
@@ -50,13 +50,14 @@ export const HELP_TEXT = `Available commands:
 /plan-reject <slug> <反馈> — 驳回计划并附反馈让 agent 修改
 /plan-close — 预览或应用计划收尾（归档/标记完成）
 
-▌▌ 模型 · 星域 · 权限 ▌▌
+▌▌ 模型 · 任务模式 · 权限 ▌▌
 
 /model [name|list] — Show or switch model（无参打开模型选择器）
-/domain [list|<name>|auto|off] — Show or switch star domain personality（无参打开星域选择面板）
-/capsule [off] <star> — 星域胶囊：把某星完整方法论注入对话（≤2 枚，消息级零缓存代价，同 recall_capsule）
+/task-mode [list|<显示名|ID>|auto] — 查看或切换任务模式（同一模型的 16 种工作方式：显示适用场景与做法；无参打开选择面板）
+/domain [list|<显示名|ID|旧星名>|auto] — /task-mode 的旧别名，输入完全兼容（旧星名与旧 ID 仍可用）
+/capsule [off] <star> — 模式胶囊：把某模式的完整方法论注入对话（≤2 枚，消息级零缓存代价，同 recall_capsule）
 /effort [off|low|medium|high|max] — Set reasoning effort
-/permission [supervise|auto|unattended|manual|yolo|allow|deny|bash|remove|reset|test] — 权限模式：监督 / 自动 / 全自动
+/permission [supervise|auto|unattended|manual|yolo|allow|deny|bash|remove|reset|test] — 权限模式：请求批准 / 帮我批准 / 完全访问
 /grant [path] [read|write] — 授权并记住工作区外目录（无参列出本工作区已记住的授权）
 /trust [status|off] — 授信当前项目：项目级 hooks 生效、配置安全键（verify/permissions/mcp…）参与合并（status 查询 · off 撤销；仅本机生效，绝不写回仓库）
 /login [provider] — OAuth 登录（codex 等订阅型服务商，浏览器授权；/connect 选 codex 后的下一步）
@@ -158,4 +159,4 @@ Ctrl+P — 命令面板（模糊搜索全部命令与界面动作；Ctrl+Esc 被
   · 80% 以上 → 压缩 + 前缀缓存大概率碎裂，每轮 cache miss，成本数倍
   · 版本升级后请勿连接旧会话——提示词结构变化会让缓存整体碎裂
 
-  会话内切星域 / 改工具集 / 热加载 skill 也会碎缓存。保护缓存就是保护成本。`
+  会话内切任务模式 / 改工具集 / 热加载 skill 也会碎缓存。保护缓存就是保护成本。`

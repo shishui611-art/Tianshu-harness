@@ -126,7 +126,7 @@ export function buildWorkerDetailContent(
     }
   }
   paramLines.push(`id: ${workerId}`)
-  if (liveView?.authority) paramLines.push(`星域：${formatAuthorityLabel(liveView.authority, liveView.authorityReason)}`)
+  if (liveView?.authority) paramLines.push(`任务模式：${formatAuthorityLabel(liveView.authority, liveView.authorityReason)}`)
 
   // ── 活动日志 ──
   if (liveView?.activityLog && liveView.activityLog.length > 0) {

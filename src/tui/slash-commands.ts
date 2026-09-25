@@ -4,7 +4,7 @@ import { looksLikeFilePath } from './engine/app.js'
 import { catalogMetaFor } from './command-catalog.js'
 import { SessionPersist, getSessionDir } from '../agent/session-persist.js'
 import { forkSession, listBranches, countMessageLines } from '../agent/session-fork.js'
-import { type StarDomainId } from '../agent/star-domain.js'
+import { type StarDomainId, domainDisplayName, domainScenario, domainHow } from '../agent/star-domain.js'
 import { starDomainRegistry } from '../agent/star-domain-registry.js'
 import { DOMAIN_SWITCH_CACHE_WARNING } from '../agent/domain-picker-entries.js'
 import { getCapsuleByStar, listCapsuleStars } from '../agent/seed-capsule-store.js'
@@ -78,7 +78,7 @@ import { switchAgentRuntime, switchAgentSession, switchAgentCwd } from '../boots
 //（architecture-guards 的 max-lines ratchet 只降不升）。
 import { applySessionSwitch, registerNewSessionCommand } from './new-session.js'
 import { rememberUserNote, listUserNotes } from '../memory/user-remember.js'
-import { formatPermissionLabel, parsePermissionAlias, tierToMode } from '../agent/approval-vocabulary.js'
+import { formatPermissionLabel, formatTierLabel, parsePermissionAlias, tierToMode } from '../agent/approval-vocabulary.js'
 import { isToolAllowed, isToolDenied, isBashCommandAllowlisted, isBashCommandDenied } from '../agent/permissions.js'
 import { getMirrorConfig, setMirrorConfig, setCheckpointConfig, setApprovalMode as persistApprovalDefault } from '../config/manager.js'
 import { grantPath, listPersistedGrants } from '../tools/path-grants.js'
@@ -551,6 +551,95 @@ interface TuiSlashCommandDef {
 let planModeExitArmedAt = 0
 const PLAN_MODE_EXIT_CONFIRM_MS = 3000
 
+/**
+ * `/task-mode` 与旧 `/domain` 的共享处理器。
+ *
+ * 呈现层已从「星域人格」切到「任务模式」：只输出显示名 / 适用场景 / 做法，不再
+ * 打印座右铭或 volatileBlock 角色叙事。**行为层一字未动**——内部 id、关键词路由、
+ * 工具白名单、决策阈值、工具档位语义全部沿用原实现，旧星名（/domain 天权）与旧
+ * ID（/domain tianquan）、旧子命令（list/ls/auto/status）继续可用。
+ */
+function handleTaskModeCommand(ctx: SlashHandlerContext): boolean {
+  const { parts, pushStatic, setIsStreaming } = ctx
+  const sub = parts[1]?.toLowerCase()
+  const current = ctx.agent.getSessionDomain()
+
+  /**
+   * 会话域对象可能缺 taskMode：`ActiveStarDomain.taskMode` 是可选的，mid-session
+   * 经旧路径（或旧会话持久化）钉定的域对象不带它。缺省时按 id 回查注册表补全，
+   * 否则 `/domain status` 会退回星名、拿不到「适用场景/做法」——这正是本次要消除的
+   * 人设残留。注册表查不到（自定义域已删除等）才回退对象自身字段。
+   */
+  const withTaskMode = <T extends { id: string; taskMode?: { name: string; scenario: string; how: string } }>(d: T): T => {
+    if (d.taskMode) return d
+    const registered = starDomainRegistry.get(d.id)
+    return registered?.taskMode ? { ...d, taskMode: registered.taskMode } : d
+  }
+
+  const describe = (d: { id: string; name: string; tagline?: string; taskMode?: { name: string; scenario: string; how: string } }): string => {
+    const full = withTaskMode(d)
+    const lines = [`显示名: ${domainDisplayName(full)}  (${full.name} · ${full.id})`]
+    const scenario = domainScenario(full)
+    if (scenario) lines.push(`适用场景: ${scenario}`)
+    const how = domainHow(full)
+    if (how) lines.push(`做法: ${how}`)
+    return lines.join('\n')
+  }
+
+  if (!sub || sub === 'status') {
+    if (current === undefined) {
+      pushStatic(createLogEntry({ type: 'system', content: '任务模式\n\n尚未激活。发送第一条消息后将根据内容自动匹配。\n使用 /task-mode list 查看所有模式（/domain 为旧别名），/task-mode <显示名|ID|旧星名> 手动指定。' }))
+    } else if (current === null) {
+      pushStatic(createLogEntry({ type: 'system', content: '任务模式\n\n当前无模式（自动匹配未命中）。\n使用 /task-mode <显示名|ID|旧星名> 手动指定，或 /task-mode auto 重置为自动检测。' }))
+    } else {
+      pushStatic(createLogEntry({ type: 'system', content: `任务模式\n\n当前: ${domainDisplayName(withTaskMode(current))} (${current.name} · ${current.id})\n\n${describe(current)}` }))
+    }
+  } else if (sub === 'list' || sub === 'ls') {
+    const currentId = current?.id
+    const lines = starDomainRegistry.list().map(d => {
+      const marker = d.id === currentId ? ' ← current' : ''
+      const head = `  ${domainDisplayName(d)} (${d.name} · ${d.id}) [${d.decisionStyle}]${marker}`
+      const scenario = domainScenario(d)
+      const how = domainHow(d)
+      const desc = [scenario ? `    适用场景: ${scenario}` : '', how ? `    做法: ${how}` : ''].filter(Boolean).join('\n')
+      return desc ? `${head}\n${desc}` : head
+    })
+    pushStatic(createLogEntry({ type: 'system', content: `任务模式一览（旧称「星域」）\n\n${lines.join('\n\n')}\n\n使用 /task-mode <显示名|ID|旧星名> 切换（如 /task-mode 评估方案、/task-mode tianquan、/task-mode 天权），/task-mode auto 恢复自动检测。` }))
+  } else if (sub === 'auto') {
+    const midSession = ctx.agent.getSessionTurnCount() > 0
+    ctx.agent.resetSessionDomain()
+    ctx.onDomainChange?.(undefined)
+    pushStatic(createLogEntry({ type: 'system', content: '任务模式已重置为自动检测。下一次对话将根据输入内容自动匹配模式。' }))
+    if (midSession) pushStatic(createLogEntry({ type: 'system', content: DOMAIN_SWITCH_CACHE_WARNING }))
+  } else {
+    // 匹配顺序：内部 id → 旧星名 → 显示名（taskMode.name）。三者都保留，
+    // 旧输入（tianquan / 天权）与新显示名（评估方案）指向同一个域。
+    const allDomains = starDomainRegistry.list()
+    const raw = parts[1]!
+    const matched = allDomains.find(d => d.id === raw.toLowerCase() || d.name === raw || domainDisplayName(d) === raw)
+    if (matched) {
+      const midSession = ctx.agent.getSessionTurnCount() > 0
+      const domain = {
+        id: matched.id,
+        name: matched.name,
+        volatileBlock: matched.volatileBlock,
+        motto: matched.motto,
+        courageThreshold: matched.courageThreshold,
+        ...(matched.taskMode ? { taskMode: matched.taskMode } : {}),
+      }
+      ctx.agent.setSessionDomain(domain)
+      ctx.onDomainChange?.(domain.name)
+      pushStatic(createLogEntry({ type: 'system', content: `任务模式切换: ${domainDisplayName(matched)} (${matched.name} · ${matched.id})\n\n${describe(matched)}` }))
+      if (midSession) pushStatic(createLogEntry({ type: 'system', content: DOMAIN_SWITCH_CACHE_WARNING }))
+    } else {
+      const validNames = allDomains.map(d => `${domainDisplayName(d)}|${d.name}|${d.id}`).join(', ')
+      pushStatic(createLogEntry({ type: 'system', content: `未知任务模式: "${raw}"\n\n可用模式（显示名|旧星名|ID）: ${validNames}\n\n使用 /task-mode list 查看所有模式。`, isError: true }))
+    }
+  }
+  setIsStreaming(false)
+  return true
+}
+
 const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
   {
     name: '/tools',
@@ -780,7 +869,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
     handler(ctx) {
       const { parts, pushStatic, setIsStreaming } = ctx
       if (!parts.slice(1).join(' ').trim()) {
-        pushStatic(createLogEntry({ type: 'system', content: 'Usage: /galaxy <任务描述>\n       启动星河集群——拆解为多个维度由不同星域并行执行。' }))
+        pushStatic(createLogEntry({ type: 'system', content: 'Usage: /galaxy <任务描述>\n       启动星河集群——拆解为多个维度由不同任务模式并行执行。' }))
         setIsStreaming(false)
         return true
       }
@@ -1552,7 +1641,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         const current = ctx.agent.getSessionDomain()
         const active = ctx.agent.listCapsules()
         const activeLines = active.length > 0 ? active.map(n => `  ◉ ${n}`).join('\n') : '  （无）'
-        pushStatic(createLogEntry({ type: 'system', content: `星域胶囊（消息级注入——正文进对话不进前缀，零缓存代价）\n\n主域: ${current ? `${current.name} (${current.id})` : '未绑定'}\n生效中 (${active.length}/2):\n${activeLines}\n\n/capsule <星名> 注入 · /capsule off <星名> 摘除 — 最多 2 枚。` }))
+        pushStatic(createLogEntry({ type: 'system', content: `模式方法论胶囊（消息级注入——正文进对话不进前缀，零缓存代价）\n\n当前模式: ${current ? `${current.name} (${current.id})` : '未绑定'}\n生效中 (${active.length}/2):\n${activeLines}\n\n/capsule <星名> 注入 · /capsule off <星名> 摘除 — 最多 2 枚。` }))
       } else if (!target) {
         pushStatic(createLogEntry({ type: 'system', content: '用法: /capsule <星名> 注入 · /capsule off <星名> 摘除 · /capsule 查看。星名同 recall_capsule（如 天权 / 瑶光 / 天璇）。', isError: true }))
       } else if (off) {
@@ -1567,13 +1656,13 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         const capsule = getCapsuleByStar(cwd, target)
         if (!capsule) {
           const known = listCapsuleStars(cwd)
-          pushStatic(createLogEntry({ type: 'system', content: `没有「${target}」的胶囊。已知星域: ${known.join(', ') || '（无）'}\n（胶囊正文来自 seed-capsule，与 recall_capsule 同源。）`, isError: true }))
+          pushStatic(createLogEntry({ type: 'system', content: `没有「${target}」的胶囊。已知模式: ${known.join(', ') || '（无）'}\n（胶囊正文来自 seed-capsule，与 recall_capsule 同源。）`, isError: true }))
         } else {
           const note = ctx.agent.noteCapsuleInjection(capsule.star)
           if (!note.ok) {
             pushStatic(createLogEntry({ type: 'system', content: note.error, isError: true }))
           } else if (ctx.submitToAgent) {
-            ctx.submitToAgent(`[星域胶囊注入] 用户经 /capsule 请求在当前主域（身份不变、不切换星域）的前提下，按下列${capsule.star}方法论处理接下来的任务：\n\n${capsule.block}`)
+            ctx.submitToAgent(`[模式方法论胶囊注入] 用户经 /capsule 请求在当前模式（身份不变、不切换模式）的前提下，按下列${capsule.star}方法论处理接下来的任务：\n\n${capsule.block}`)
             pushStatic(createLogEntry({ type: 'system', content: `已注入 ${capsule.star} 胶囊（封存于 ${capsule.sealedAt}）——正文随下一条消息进入对话，前缀缓存零影响。\n生效中: ${ctx.agent.listCapsules().join(' + ')}` }))
           } else {
             // 记账已占用槽位——注入通道缺失时回滚，避免白占
@@ -1587,54 +1676,21 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
     },
   },
   {
+    name: '/task-mode',
+    immediate: true,
+    handler(ctx) {
+      return handleTaskModeCommand(ctx)
+    },
+  },
+  {
+    // /domain 是旧别名入口，不再是 canonical——/task-mode 才是现行名。两者共用
+    // 同一个 handler。**刻意不给它登记指向 /task-mode 的别名**：canonical 名恒赢，
+    // 该别名会被 registry 忽略（等于死别名），且守卫「别名不得与 canonical 撞名」
+    // 会直接判红。旧输入 /domain 本身仍完整可用。
     name: '/domain',
     immediate: true,
     handler(ctx) {
-      const { parts, pushStatic, setIsStreaming } = ctx
-      const cmd = parts[0]!.toLowerCase()
-      const sub = parts[1]?.toLowerCase()
-      if (!sub || sub === 'status') {
-        // Show current domain
-        const current = ctx.agent.getSessionDomain()
-        if (current === undefined) {
-          pushStatic(createLogEntry({ type: 'system', content: '星域\n\n尚未激活。发送第一条消息后将根据内容自动匹配。\n使用 /domain list 查看所有星域，/domain <名称> 手动指定。' }))
-        } else if (current === null) {
-          pushStatic(createLogEntry({ type: 'system', content: '星域\n\n当前无星域（自动匹配未命中）。\n使用 /domain <名称> 手动指定，或 /domain auto 重置为自动检测。' }))
-        } else {
-          pushStatic(createLogEntry({ type: 'system', content: `星域\n\n当前: ${current.name} (${current.id})\n座右铭: ${current.motto}\n\n${current.volatileBlock}` }))
-        }
-      } else if (sub === 'list' || sub === 'ls') {
-        const current = ctx.agent.getSessionDomain()
-        const currentId = current?.id
-        const lines = (starDomainRegistry.list() as Array<{ id: StarDomainId; name: string; keywords: string[]; decisionStyle: string; motto: string }>).map(d => {
-          const marker = d.id === currentId ? ' ← current' : ''
-          return `  ${d.name} (${d.id}) [${d.decisionStyle}]${marker}\n    ${d.motto}\n    keywords: ${d.keywords.join(', ')}`
-        })
-        pushStatic(createLogEntry({ type: 'system', content: `星域一览\n\n${lines.join('\n\n')}\n\n使用 /domain <id|名称> 切换，/domain auto 恢复自动检测。` }))
-      } else if (sub === 'auto') {
-        const midSession = ctx.agent.getSessionTurnCount() > 0
-        ctx.agent.resetSessionDomain()
-        ctx.onDomainChange?.(undefined)
-        pushStatic(createLogEntry({ type: 'system', content: '星域已重置为自动检测模式。下一次对话将根据输入内容自动匹配星域。' }))
-        if (midSession) pushStatic(createLogEntry({ type: 'system', content: DOMAIN_SWITCH_CACHE_WARNING }))
-      } else {
-        // Try to match by id or Chinese name
-        const allDomains = starDomainRegistry.list()
-        const matched = allDomains.find(d => d.id === sub || d.name === parts[1] || d.id === parts[1]?.toLowerCase())
-        if (matched) {
-          const midSession = ctx.agent.getSessionTurnCount() > 0
-          const domain = { id: matched.id, name: matched.name, volatileBlock: matched.volatileBlock, motto: matched.motto, courageThreshold: matched.courageThreshold }
-          ctx.agent.setSessionDomain(domain)
-          ctx.onDomainChange?.(domain.name)
-          pushStatic(createLogEntry({ type: 'system', content: `星域切换: ${domain.name} (${domain.id})\n${domain.motto}\n\n${domain.volatileBlock}` }))
-          if (midSession) pushStatic(createLogEntry({ type: 'system', content: DOMAIN_SWITCH_CACHE_WARNING }))
-        } else {
-          const validNames = allDomains.map(d => `${d.name}|${d.id}`).join(', ')
-          pushStatic(createLogEntry({ type: 'system', content: `未知星域: "${parts[1]}"\n\n可用星域: ${validNames}\n\n使用 /domain list 查看所有星域。`, isError: true }))
-        }
-      }
-      setIsStreaming(false)
-      return true
+      return handleTaskModeCommand(ctx)
     },
   },
   {
@@ -1728,7 +1784,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         lines.push(`当前权限: ${currentLabel} (${currentMode})`)
         lines.push('')
         lines.push('快速切换: /permission supervise | /permission auto [轮次] | /permission unattended [confirm]')
-        lines.push('别名: manual → 监督 · yolo → 全自动 · /yes → 全自动')
+        lines.push(`别名: manual → ${formatTierLabel('supervise')} · yolo → ${formatTierLabel('unattended')} · /yes → ${formatTierLabel('unattended')}`)
         lines.push('')
 
         if (allow.length > 0) {
@@ -1783,7 +1839,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         agent.config.maxTurns = resolveMaxTurns(tierToMode('supervise'), ctx.config.agent.maxTurns)
         ctx.setAutoSafe(false)
         ctx.persistApprovalMode?.(tierToMode('supervise'))
-        pushStatic(createLogEntry({ type: 'system', content: '✓ 已切换至 监督 — 所有高风险操作都需人工确认（已设为默认，重启后仍生效）' }))
+        pushStatic(createLogEntry({ type: 'system', content: `✓ 已切换至 ${formatTierLabel('supervise')} — 所有高风险操作都需人工确认（已设为默认，重启后仍生效）` }))
         setIsStreaming(false)
         return true
       }
@@ -1814,14 +1870,14 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         const confirmed = parts[2]?.toLowerCase() === 'confirm'
         if (!confirmed) {
           pushStatic(createLogEntry({ type: 'system', content: [
-            '⚠ 全自动风险说明',
+            `⚠ ${formatTierLabel('unattended')}风险说明`,
             '',
             '  · 无轮次刹车 — run 一直执行到完成或 maxTurns 上限',
             '  · 无进度播报 — 完全静默运行',
             '  · 所有工具调用直接执行，不再弹确认',
-            '  · 沙箱仍拦截项目外写入',
+            '  · 写沙箱不会因本档自动开启：仅在你显式配置时请求开启，且是否生效取决于运行环境',
+            '  · 已有拒绝规则与运行时自保护仍然生效',
             '  · 回滚兜底：/rollback + git 检查点',
-            '  · Windows 注意：沙箱能力降级',
             '',
             '确认进入: /permission unattended confirm  或  /permission yolo confirm  或  /yes',
           ].join('\n') }))
@@ -1832,7 +1888,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         agent.config.maxTurns = resolveMaxTurns(tierToMode('unattended'), ctx.config.agent.maxTurns)
         ctx.setAutoSafe(false)
         ctx.persistApprovalMode?.(tierToMode('unattended'))
-        pushStatic(createLogEntry({ type: 'system', content: '✓ 已切换至 全自动 — 全自动执行，无刹车无打扰（已设为默认，重启后仍生效）。/rollback 可随时回滚。关闭: /yes off' }))
+        pushStatic(createLogEntry({ type: 'system', content: `✓ 已切换至 ${formatTierLabel('unattended')} — 直接执行，无刹车无打扰（已设为默认，重启后仍生效）。/rollback 可随时回滚。关闭: /yes off` }))
         setIsStreaming(false)
         return true
       }
@@ -3504,7 +3560,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
         agent.config.maxTurns = resolveMaxTurns('auto-safe', ctx.config.agent.maxTurns)
         ctx.setAutoSafe(true)
         ctx.persistApprovalMode?.('auto-safe')
-        pushStatic(createLogEntry({ type: 'system', content: '✓ 已退出全自动，切回 自动 — 低/无风险自动，高风险仍确认（已设为默认，重启后仍生效）。' }))
+        pushStatic(createLogEntry({ type: 'system', content: `✓ 已退出${formatTierLabel('unattended')}，切回 ${formatTierLabel('auto')} — 低/无风险自动，高风险仍确认（已设为默认，重启后仍生效）。` }))
         setIsStreaming(false)
         return true
       }
@@ -3512,7 +3568,7 @@ const TUI_SLASH_COMMANDS: readonly TuiSlashCommandDef[] = [
       agent.config.maxTurns = resolveMaxTurns('dangerously-skip-permissions', ctx.config.agent.maxTurns)
       ctx.setAutoSafe(false)
       ctx.persistApprovalMode?.('dangerously-skip-permissions')
-      pushStatic(createLogEntry({ type: 'system', content: '✓ 全自动已开启 — 无限轮次，无刹车无打扰（已设为默认，重启后仍生效）。关闭: /yes off · 回滚: /rollback' }))
+      pushStatic(createLogEntry({ type: 'system', content: `✓ ${formatTierLabel('unattended')}已开启 — 无限轮次，无刹车无打扰（已设为默认，重启后仍生效）。关闭: /yes off · 回滚: /rollback` }))
       setIsStreaming(false)
       return true
     },
@@ -4243,7 +4299,7 @@ export function registerTuiSlashCommands(app: TuiApp, ctx: BootstrapContext): vo
   })
 
   register("/domain", {
-    description: "Show or switch star domain",
+    description: "Show or switch task mode (legacy alias of /task-mode)",
     immediate: true,
     handler: ({ app, input, trimmed }) => {
       const parts = trimmed.split(/\s+/)
@@ -4252,6 +4308,24 @@ export function registerTuiSlashCommands(app: TuiApp, ctx: BootstrapContext): vo
         return true
       }
       const handler = getHandler("/domain")
+      return handler ? handler(buildHandlerContext(trimmed)) : false
+    },
+  })
+
+  // /task-mode 是现行入口（canonical 定义在 TUI_SLASH_COMMANDS 数组里，见 name
+  // '/task-mode'），/domain 保留为旧别名。两条共用同一个 handler 与选择面板——
+  // 无参打开面板，带参走 list|status|auto|<显示名|ID|旧星名>。此处只补无参时的
+  // overlay 行为（数组式 handler 没有 app 句柄）。
+  register("/task-mode", {
+    description: "Show or switch task mode (alias: /domain)",
+    immediate: true,
+    handler: ({ app, input, trimmed }) => {
+      const parts = trimmed.split(/\s+/)
+      if (parts.length === 1) {
+        app.activateOverlay("domain-picker")
+        return true
+      }
+      const handler = getHandler("/task-mode")
       return handler ? handler(buildHandlerContext(trimmed)) : false
     },
   })
@@ -4441,7 +4515,7 @@ export function registerTuiSlashCommands(app: TuiApp, ctx: BootstrapContext): vo
   })
 
   register("/permission", {
-    description: "权限模式：监督 / 自动 / 全自动",
+    description: "权限模式：请求批准 / 帮我批准 / 完全访问",
     immediate: true,
     handler: () => {
       // Delegate to the main permission handler — it reads approvalMode live.
@@ -4469,7 +4543,7 @@ export function registerTuiSlashCommands(app: TuiApp, ctx: BootstrapContext): vo
   })
 
   register("/yes", {
-    description: "一键全自动（/yes off 回到自动）— 持久化为默认",
+    description: "一键完全访问（/yes off 回到帮我批准）— 持久化为默认",
     immediate: true,
     handler: ({ trimmed }) => handleYoloToggle(trimmed, {
       agent: ctx.agent,
@@ -4477,8 +4551,8 @@ export function registerTuiSlashCommands(app: TuiApp, ctx: BootstrapContext): vo
       configuredMaxTurns: ctx.config.agent.maxTurns,
       persistDefault: persistApprovalDefault,
     }, {
-      on: '✓ 全自动已开启 — 无限轮次，无刹车无打扰（已设为默认，重启后仍生效）。关闭: /yes off · 回滚: /rollback',
-      off: '✓ 已退出全自动，切回 自动 — 低/无风险自动，高风险仍确认（已设为默认，重启后仍生效）。',
+      on: `✓ ${formatTierLabel('unattended')}已开启 — 无限轮次，无刹车无打扰（已设为默认，重启后仍生效）。关闭: /yes off · 回滚: /rollback`,
+      off: `✓ 已退出${formatTierLabel('unattended')}，切回 ${formatTierLabel('auto')} — 低/无风险自动，高风险仍确认（已设为默认，重启后仍生效）。`,
     }),
   })
 

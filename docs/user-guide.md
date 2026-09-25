@@ -60,7 +60,7 @@ tianshu --goal "修复所有类型错误" --budget 50   # 无头目标自主模�
 | `--resume` `-r`（裸） | 启动后打开会话选择器 |
 | `--new` | 强制开新会话 |
 | `--list` · `tianshu sessions` | 打印会话列表后退出 |
-| `--dangerously-skip-permissions` | 单次会话全自动（跳过所有审批；沙箱仍开） |
+| `--dangerously-skip-permissions` | 单次会话完全访问（跳过所有审批；已有拒绝规则仍生效） |
 | `--screen-reader` | 读屏模式（动态段整体不渲染、周期重绘停转） |
 | `--skip-welcome` | 跳过欢迎屏 |
 | `--stream-events <path>` | 把本次 run 镜像为 NDJSON `SessionEvent` 写入文件（TUI 与 `-p`/`--goal` 均支持；无头下与 `--stream-json` 同源、同一份脱敏口径。事件按行追加，可 `tail -f` / `jq` 消费；run 期间实时增长） |
@@ -109,7 +109,7 @@ tail -f run.jsonl | jq -c 'select(.type == "tool_use") | .data.name'
 
 高命中率的前提是前缀字节稳定。以下情况会让缓存 miss，表现为每轮 `cache_read_input_tokens` 长期为 0：
 
-- **system prompt / 工具定义变动** —— 会话中途改了工具集或提示词层（如切星域、加减 skill；禅模式晋升是刻意的一次性实例，见下文「禅模式」）
+- **system prompt / 工具定义变动** —— 会话中途改了工具集或提示词层（如切任务模式、加减 skill；禅模式晋升是刻意的一次性实例，见下文「禅模式」）
 - **模型切换** —— 不同模型缓存 key 不同，换模型后从 0 重建
 - **字节级差异** —— 消息内容含时间戳、随机 ID 等不稳定字节
 - **跨边界重写** —— `/compact`（仅 `turn===0` 重写历史）、`/cd` 切项目（新 user 边界断尾）
@@ -151,65 +151,52 @@ tail -f run.jsonl | jq -c 'select(.type == "tool_use") | .data.name'
 
 > 注：桌面端快捷键 `⌘/Ctrl+.` 的「Zen 模式」是隐藏侧栏的纯 UI 专注模式——同名不同物，对缓存无任何影响。
 
-### 星域系统
+### 任务模式
 
-**星域是什么**：天枢把不同的认知姿态建模为「星域」——每颗星不是角色扮演，而是一套可切换的认知纪律。进入对应域后有三样东西**真实切换**，而非换个名字：**系统提示词**（该域方法论 volatile block）、**工具白名单**（worker 与域 `toolWhitelist` 求交集）、**决策阈值**（`courageThreshold`——破军 0.25 最敢闯、太一 0.95 最审慎、瑶光 0.7 要证据）。新会话默认钉定**启明**（全景洞察、根因推演），不自动切换；把默认星域设为 `auto` 才按任务描述关键词自动路由（池内为天权/开阳/瑶光/天梁 + 自定义域；华盖等特化域需手动指定）。星域在真实会话里的行为样本见 [指标观测与真实数据](reference/observability-harness.md)。
+**任务模式是什么**：天枢把不同的工作方式建模为可切换的「任务模式」（旧称「星域」）。每个模式不是角色扮演，而是一套可切换的工作纪律。进入对应模式后有三样东西**真实切换**，而非换个名字：**系统提示词**（该模式的方法论 volatile block）、**工具白名单**（worker 与模式 `toolWhitelist` 求交集）、**决策阈值**（`courageThreshold`——破军 0.25 最敢闯、太一 0.95 最审慎、瑶光 0.7 要证据）。新会话默认「日常开发」（`qiming`），不自动切换；把默认模式设为 `auto` 才按任务描述关键词自动路由（池内为天权/开阳/瑶光/天梁 + 自定义模式；太一等特化模式需手动指定）。任务模式在真实会话里的行为样本见 [指标观测与真实数据](reference/observability-harness.md)。
 
 ```bash
-/domain tianliang          # 显式切换到天梁域
-/domain list               # 列出所有星域
-/domain                    # 打开星域选择面板
-实现用户注册模块            # 自动路由到天梁（执行/交付）
-审查这个方案                # 自动路由到天权（规划/审查）
+/task-mode tianliang       # 显式切换到「执行任务」
+/task-mode list            # 列出所有任务模式
+/task-mode                 # 打开模式选择面板
+/domain tianliang          # 旧别名，等价可用
+实现用户注册模块            # 自动路由到「执行任务」
+审查这个方案                # 自动路由到「评估方案」
 ```
 
-#### 新用户推荐
+#### 16 个任务模式
 
-第一次不知道选哪颗星，从这五颗开始——它们覆盖日常工程闭环，其余星域在下方按任务场景速查：
+| 显示名 | ID | 适用场景 | 做法 |
+|--------|-----|----------|------|
+| **项目统筹** | `tianshu` | 跨模块/跨文件的改动、需要权衡架构取舍的规划、多任务并发、需要先判断改动深度的任务。 | 先建全局视图再动手，把复杂任务拆成可独立验证的单元并逐个验证；结构性事实 grep 一层采信，机制解释读到实现再采信；新代码镜像既有模式，改动前看波及半径。 |
+| **探索新方案** | `pojun` | 技术选型与可行性验证、新功能原型、边界未知的探查、需要先试一条再决定的场合。 | 先选一条最短路径验证，失败即边界信息；探明的边界与教训整理成可复用形态；三次撞墙换维度；提交声称"已完成/测过"而方法零调用即 false-green，grep 真消费者再下结论。 |
+| **维护结构** | `tianfu` | 重构、既有模块的结构性改造、稳定性与性能优化、export/接口的兼容性变更。 | 改动前先理解这段代码为什么被写成这样；把承重结构放到改动碰不着的深处；export 是承诺，破坏它需要迁移计划；歧义处大声失败；修复超出当前任务时只记录不顺手大改。 |
+| **执行任务** | `tianliang` | 边界已定的实现类任务、按计划落地、修缺陷、补测试。 | 先核对计划引用的文件与行号是否仍与现实一致，以现实为准执行；改什么验什么，通过了就提交不积累；回归测试走 RED→GREEN；任务 ≥4 先分波，每波闭环再开下一波。 |
+| **评估方案** | `tianquan` | 方案与计划审查、架构取舍评估、外部文档/调研的可信度核实、需要产出可执行计划文档的场合。 | 先验证再称量，禁止跳过核实直接总结；两端都放——收益与代价同报；存在性断言 grep 一层即结论，运行时语义断言沿调用链多查一层并引用文件:行号；拿不到实现证据就把"修订"降级为"疑问"。 |
+| **检查前提** | `tianji` | 方案成形后的前提审计、反事实推演、寻找被遗漏的可能性与隐藏假设。 | 列出隐含前提逐条问"如果不成立呢"；做三步到达测试识别过度工程化；审计方案里的沉默（没提到的子系统、没覆盖的路径）；质疑必须落到"读哪行、跑哪条命令能验证"。 |
+| **跨模块分析** | `tianxuan` | 跨领域/跨模块的模式迁移、设计问题的换视角求解、症状堆叠时的根因回溯。 | 先到三个无关领域找碎片让模式涌现，每轮灵感立刻派反证（洞察能写成代码/测试才算数）；多个独立领域指向同一模式时验证是否为真同构；连续多轮同一视角循环时换入口；先求证再修补。 |
+| **优化提示词** | `fu` | prompt / 系统提示词调校、方法论蒸馏、模型行为诊断、上下文与须知注入的取舍。 | 先诊断再修改，区分问题在认知场还是模型能力；提取方法论时淘汰所有不含"动作+判据+反例"的条目；认知场改动绝不触碰 tool definition 静态文本，动态内容走 volatile/appendix 通道。 |
+| **整理代码** | `wenqu` | 命名与结构整理、局部重构与去噪、代码可读性提升、界面/样式的实现与调优。 | 先读懂既有腔调再做最克制的改动，让意图不证自明；不做冗余逻辑与过度抽象；界面改动起 dev server 用 browser_debug 截图看渲染，换宽度复查。 |
+| **核对运行结果** | `kaiyang` | 性能与行为测量、插桩与对账、仿真回放、需要"先量出来再动手"的排查。 | 先推导精确构成再实测对账；期望值走独立通道（规格/手工推导/参考实现/物理约束），绝不取自被测系统；一次只动一个变量，单点不构成证据。 |
+| **复现并验证** | `yaoguang` | 验证他人或自己的声称、回归排查、缺陷归族、怀疑机制静默失效的核查。 | 先问能否复现原缺陷，RED→GREEN 才算证据；取信 exit code 与实际 diff，不取信提交信息；单个 bug 先归族再修；怀疑静默失效时先装账本再修行为。 |
+| **跟进长期任务** | `huagai` | 多波次的长程任务、大范围重构、审查 FAIL 后的持续跟修、需要跨会话接续的工作。 | 未过可核验证据前不说"完成"，审查 FAIL 即继续修；第一波先建测量标尺，后续每波用同一标尺验收；计划阶段写清"明确不做"；假绿检测。 |
+| **日常开发** | `qiming` | 日常功能开发与缺陷修复、探索性调查、为他人铺路的调研任务（默认模式）。 | 先于动手一步展开全景推演，提出精准的架构假设并用第一手日志与代码事实落实；缺口用工具补或向建设者索取，绝不用推理链填；关键结论至少两种独立方式交叉验证。 |
+| **检查界面与交付** | `changgeng` | 界面改动的交付验收、多主题/多尺寸的视觉核对、长任务的收尾与交接。 | 交付前用 browser_debug 截图看渲染，必要时换宽度再看；视觉终验收硬通货——多主题矩阵（light/dark 必截）、像素真值、before/after 对照存证；收尾留 handoff、快照与留档。 |
+| **精简冗余** | `qisha` | 死代码与冗余清理、注意力预算核算、防线与配置的退场评估、需要出"带证据名单"的减法任务。 | 举证责任在存在方——只问它能否自证仍在起作用（触发过吗？触发后行为变了吗）；只提名不处决；砍不动的写清它在承重什么；每项提名附判据与回滚方式。 |
+| **使用最小工具集** | `taiyi` | 边界清楚的小改动、需要克制与专注的收束型任务、工具越少越不容易跑偏的场合（手动切换）。 | 动手前先让问题停一下再出手；一次只推进一件事；每收一段就留下判断依据、否决过的假设与没走完的岔路；归因必须落回一行可复核的观察（相邻行、时间戳、磁盘证据），不靠源码推断填。 |
 
-| 星域 | 别名 | 推荐理由 |
-|------|------|----------|
-| **启明** `qiming` | 晨光向导（默认域） | 通用工程能力 · 全景洞察——需求模糊、方向不明时，先看清全局、直击根因再动手 |
-| **长庚** `changgeng` | 守夜人 | 通用工程能力 · 终局成全——视觉终验、长夜陪伴、交接收尾，收灯前把路标留下 |
-| **太一** `taiyi` | 极简中心 | 极简体验——内置 14 件核心工具（taiyi 档）、不催促不打扰；喜欢安静高效就手动 `/domain taiyi` |
-| **天权** `tianquan` | 方案审查官 | 擅长规划与审查——架构评估、方案权衡、技术选型，产出可执行计划 |
-| **瑶光** `yaoguang` | 复现验证官 | 擅长审查与验收——复现缺陷、回归验证、盯假绿灯——绿灯不算数 |
-
-> 五颗之外的日常出口：规划定稿后想**精准交付**，切**天梁**（交付执行官）——分波落地、逐批验证、交付留痕。
-
-#### 按任务场景选星
-
-| 场景 | 星域 | 别名 | 适合攻坚 |
-|------|------|------|----------|
-| 规划与审查 | 启明 ☥ `qiming` | 晨光向导 | 需求模糊、方向不明——探针先行，全景洞察、根因推演（默认域） |
-| 规划与审查 | 天权 ⚖ `tianquan` | 方案审查官 | 架构评估、方案权衡、技术选型、出可执行计划 |
-| 规划与审查 | 天机 ⚝ `tianji` | 前提质疑官 | 给方案找漏洞、推演失败模式、挑战没人说出口的前提 |
-| 规划与审查 | 天枢 ✵ `tianshu` | 全局统筹官 | 跨模块统筹、全链路闭环、复杂系统治理（显式开启的统筹位） |
-| 执行与交付 | 天梁 ✧ `tianliang` | 交付执行官 | 定稿计划精准落地、分波交付、逐批验证留痕 |
-| 执行与交付 | 华盖 ☉ `huagai` | 守昼者 | 长程建设、多轮审查马拉松、最后一英里收尾 |
-| 验证与验收 | 瑶光 ↻ `yaoguang` | 复现验证官 | 复现缺陷、回归验证、缺陷归族——绿灯不算数 |
-| 验证与验收 | 开阳 ☌ `kaiyang` | 对账师 | 性能测量、插桩对账、仿真回放、量化定位 |
-| 验证与验收 | 长庚 ☽ `changgeng` | 守夜人 | 视觉终验、交接收尾、长夜陪伴式任务 |
-| 探索与攻坚 | 破军 ☄ `pojun` | 探索先锋 | 陌生代码库、POC 原型、技术攻坚、边界突破 |
-| 探索与攻坚 | 天璇 ☾ `tianxuan` | 跨域寻迹者 | 换视角解死结、跨领域找同构、根因复盘 |
-| 守护与重构 | 天府 ❖ `tianfu` | 结构守护者 | 重构、稳定性、存量代码维护、守护既有结构 |
-| 守护与重构 | 七杀 ◌ `qisha` | 肃秋剪枝官 | 精简冗余、清理死代码、注意力预算审计 |
-| 认知与美学 | 文曲 ✺ `wenqu` | 代码美学者 | 命名与结构、代码质感、UI 与前端体验 |
-| 认知与美学 | 辅 ⊕ `fu` | 认知调校师 | 提示词调校、方法论蒸馏、agent 行为诊断 |
-| 认知与美学 | 太一 ◉ `taiyi` | 极简中心 | 极简高效——最小工具集、中虚不催（手动切换，不参与自动路由） |
-
-> 各星完整碑文、创始记忆、主星模型与核心信念见 [✦ 星域碑文](stars/genesis-stele.md)；每颗星都有对应的 seed-capsule 记录实战方法，见 `docs/seed-capsule-*.md`。委员会 `/council` 与团队模式 `/team` 会按议题自动召集多星域席位，冲突时还可进入反驳轮次。
+> 委员会 `/council` 与团队模式 `/team` 会按议题自动召集多个任务模式席位，冲突时还可进入反驳轮次。各模式的完整方法论文本在源码 `src/agent/star-domain.ts` / `src/agent/star-domain-data.ts`；历史碑文与叙事存档见 `docs/stars/`（**属于历史文档，不代表现行产品形态**）。
 
 ### 工具集与 preset
 
-天枢内置 51 个工具（full 档口径），按 preset 分档装配（解析优先级：`RIVET_TOOL_PRESET` 环境变量 > 项目 `.rivet-config.json` 的 `tools.preset` > 项目 `runtime.domains.<域>.toolPreset` > 用户配置 `tools.preset` > 用户 `runtime.domains.<域>.toolPreset` > 星域内置默认档（太一域→taiyi）> 兜底档：**`minimal`**（2026-09-23 起；此前非 lean 为 `frontend`）：
+天枢内置 51 个工具（full 档口径），按 preset 分档装配（解析优先级：`RIVET_TOOL_PRESET` 环境变量 > 项目 `.rivet-config.json` 的 `tools.preset` > 项目 `runtime.domains.<域>.toolPreset` > 用户配置 `tools.preset` > 用户 `runtime.domains.<域>.toolPreset` > 模式内置默认档（taiyi 模式→taiyi）> 兜底档：**`minimal`**（2026-09-23 起；此前非 lean 为 `frontend`）：
 
 | Preset | 工具数 | 说明 |
 |--------|--------|------|
 | **minimal**（默认） | 30 | 日常开发全能力——读写/检索/bash/git 史实侦察（`git_scout`）/测试/委托/web/计划/todo/memory，省 token、保 prefix cache——未做任何配置时的兜底档 |
 | **frontend** | 31 | minimal + `browser_debug`（UI 渲染验证闭环） |
 | **full** | 51 | 全集，含 `council_convene` / `team_orchestrate` / `attack_case` / `semantic_search` / `repo_graph` / `monitor` / `computer_use` / `capability` / `cli_discover` / 办公工具族等进阶能力 |
-| **taiyi** | 14 | 最小评测档——高频核心 + 交付闭环，去编排/浏览器/网络/视觉等重工具；太一星域钉定时自动落此档 |
+| **taiyi** | 14 | 最小评测档——高频核心 + 交付闭环，去编排/浏览器/网络/视觉等重工具；taiyi 任务模式钉定时自动落此档 |
 
 ```bash
 RIVET_TOOL_PRESET=full rivet          # 本次会话用 full
@@ -256,7 +243,7 @@ RIVET_TOOL_PRESET=full rivet          # 本次会话用 full
 
 > 还有个只读的 **Ask Mode**（`/ask` toggle）：只允许读/搜/`ask_user_question`，适合代码问答与需求澄清，需要写改或跑命令时再 `/ask` 退出。
 
-Plan Mode 内置星域委派——复杂计划自动调用 `delegate_task` 从不同架构视角（天权/瑶光/天机/天府/天璇）并行探查，产出的 findings 标注"待核验"以防盲信。桌面端在 plan 执行时展示 checklist 实时进度（待办项面板随波次推进自动勾选）。
+Plan Mode 内置任务模式委派——复杂计划自动调用 `delegate_task` 从不同架构视角（天权/瑶光/天机/天府/天璇）并行探查，产出的 findings 标注"待核验"以防盲信。桌面端在 plan 执行时展示 checklist 实时进度（待办项面板随波次推进自动勾选）。
 
 ### Rewind（倒带回退）
 
@@ -397,7 +384,7 @@ tianshu config mcp add-stdio tianshu-mcp npx -y tianshu-mcp
 
 **阈值默认**：Lean 4 会话 / 600000ms（10 分钟）/ 10MB，正常 16 / 1800000ms（30 分钟）/ 50MB；事件日志磁盘下限 1,000,000 字节。
 
-**最小工具集（taiyi 档）**：`RIVET_TOOL_PRESET=taiyi`（或项目配置 `tools.preset: "taiyi"`）只装配高频核心工具（读写/检索/bash/git/测试/交付/计划等 14 个），去掉编排/浏览器/网络/视觉等重工具——适合评测「只留关键工具是否够用」。`full` 档一键回退全集。**太一星域内置此档**：`defaultDomain` 钉定 `taiyi` 时无需任何配置即自动落 taiyi 档（显式给档恒优先可覆盖）；一键组合见下方「最小集绑定星域」。
+**最小工具集（taiyi 档）**：`RIVET_TOOL_PRESET=taiyi`（或项目配置 `tools.preset: "taiyi"`）只装配高频核心工具（读写/检索/bash/git/测试/交付/计划等 14 个），去掉编排/浏览器/网络/视觉等重工具——适合评测「只留关键工具是否够用」。`full` 档一键回退全集。**taiyi 任务模式内置此档**：`defaultDomain` 钉定 `taiyi` 时无需任何配置即自动落 taiyi 档（显式给档恒优先可覆盖）；一键组合见下方「最小集绑定任务模式」。
 
 **按域覆盖（runtime.domains）**：`defaultDomain` 钉定某域时，该域的 lean/阈值/工具档位覆盖全局配置（其他域不受影响）：
 
@@ -417,9 +404,9 @@ tianshu config mcp add-stdio tianshu-mcp npx -y tianshu-mcp
 }
 ```
 
-解析链：`RIVET_LEAN` 环境变量（恒优先）→ 域覆盖 → 全局 runtime。桌面端：设置 → 行为 → Lean 资源档 → 按域覆盖（域列表随新增星域自动扩展）。注意：域覆盖在会话装配期生效（启动钉定域时）；运行中 `/domain` 切换不影响已冻结的工具集与 lean（改工具指纹会重建前缀缓存）。
+解析链：`RIVET_LEAN` 环境变量（恒优先）→ 域覆盖 → 全局 runtime。桌面端：设置 → 行为 → Lean 资源档 → 按域覆盖（模式列表随新增模式自动扩展）。注意：域覆盖在会话装配期生效（启动钉定域时）；运行中切换任务模式不影响已冻结的工具集与 lean（改工具指纹会重建前缀缓存）。
 
-**无需改文件的一键启动**：`/config` → Basics → 「最小集绑定星域」——选中某域（如 changgeng 或 taiyi），保存即自动写入 `defaultDomain` 钉定该域 + 该域的 taiyi 最小工具档覆盖（不含 lean 资源减配）。此后 `tianshu` 裸启动即进入该星域的最小集会话；配合「默认模型」字段（`agent.defaultModel`，`provider:modelId` 格式）即可完全免参数启动。清空绑定则恢复默认域（域覆盖配置保留）。桌面端同款项：设置 → 系统 → 「最小集绑定星域」。
+**无需改文件的一键启动**：`/config` → Basics → 「最小集绑定任务模式」——选中某模式（如 changgeng 或 taiyi），保存即自动写入 `defaultDomain` 钉定该域 + 该域的 taiyi 最小工具档覆盖（不含 lean 资源减配）。此后 `tianshu` 裸启动即进入该模式的最小集会话；配合「默认模型」字段（`agent.defaultModel`，`provider:modelId` 格式）即可完全免参数启动。清空绑定则恢复默认域（域覆盖配置保留）。桌面端同款项：设置 → 系统 → 「最小集绑定任务模式」。
 
 ## 终端 UI（TUI）
 
@@ -427,7 +414,7 @@ tianshu config mcp add-stdio tianshu-mcp npx -y tianshu-mcp
 
 | 能力 | 说明 · 快捷键 |
 |------|--------------|
-| **GlanceBar 状态栏** | 输入框上方单行实时显示：星域 glyph · git 分支 · 模型 · 推理强度 · 缓存命中率 · 上下文占比 · 本轮 cost · 耗时 · turn 计数 · todo 徽章。一屏掌握会话健康度。 |
+| **GlanceBar 状态栏** | 输入框上方单行实时显示：任务模式 glyph · git 分支 · 模型 · 推理强度 · 缓存命中率 · 上下文占比 · 本轮 cost · 耗时 · turn 计数 · todo 徽章。一屏掌握会话健康度。 |
 | **流式中打断（Steer）** | agent 还在跑时直接打字，回车即可注入。输入按 `now / next / later` 三档优先级排队，在工具结果或回合边界 drain 给 AgentLoop——不必等它说完。`halt` 类意图自动升到 `now`。 |
 | **消息排队（/queue）** | `/queue <text>` 显式排队：agent busy 时攒下整条消息，settle 后自动投递；Esc 中断后排队内容回填输入框不丢失。输入区实时显示后台任务条与 await 等待区。 |
 | **终端内联图片** | kitty / iTerm2 图形协议在终端里直接渲染图片（工具产物、截图验证结果）。默认自动检测协议，`RIVET_IMAGES=0` 关闭、`kitty`/`iterm2` 强制指定。 |
@@ -467,9 +454,9 @@ TUI 是 CLI 的默认表面。桌面端（Tauri）与 VS Code/Cursor 插件共�
 
 | 档位 | 命令 | 行为 |
 |------|------|------|
-| **监督** | `/permission supervise`（别名 `manual`） | 每个高风险工具都弹确认，最大控制 |
-| **自动**（默认） | `/permission auto [轮次]`（别名 `default`） | 低/无风险工具自动执行，高风险仍确认；可设每 N 轮检查点 |
-| **全自动** | `/permission unattended confirm` · `/yes` · `/yolo` | 免审批执行；写边界仍在（自动开启沙箱），回滚兜底。`/yes`/`/yolo` 即时生效并持久化为默认，`/yolo off` 回到自动 |
+| **请求批准** | `/permission supervise`（别名 `manual`） | 每个高风险工具都弹确认，最大控制 |
+| **帮我批准**（默认） | `/permission auto [轮次]`（别名 `default`） | 低/无风险工具自动执行，高风险仍确认；可设每 N 轮检查点 |
+| **完全访问** | `/permission unattended confirm` · `/yes` · `/yolo` | 不弹批准确认；仍遵守已有拒绝规则与运行时自保护。`/yes`/`/yolo` 即时生效并持久化为默认，`/yolo off` 回到「帮我批准」 |
 
 快速操作：
 
@@ -478,17 +465,18 @@ TUI 是 CLI 的默认表面。桌面端（Tauri）与 VS Code/Cursor 插件共�
 /permission status          # 当前模式 + 规则
 /permission allow/deny      # 工具白名单/黑名单
 /permission bash allow/deny # bash 前缀白名单/黑名单
-/yes [off] · /yolo [off]    # 一键全自动 / 回到自动（持久化为默认）
+/yes [off] · /yolo [off]    # 一键完全访问 / 回到帮我批准（持久化为默认）
 ```
 
 ```bash
-tianshu --dangerously-skip-permissions      # 单次会话全自动
+tianshu --dangerously-skip-permissions      # 单次会话完全访问
 tianshu config set-approval auto-safe       # 持久化默认档位
 ```
 
 - 规则分 `[config]`（持久化）与 `[session]`（本次会话）两层，`deny` 永远优先。
-- 跳过提示**不会**关闭工具校验、路径安全、证据追踪、检查点与交付门禁。
-- 沙箱默认关闭，**全自动会自动开启**；`RIVET_SANDBOX=1` 可显式开、`=0` 强制关。
+- **完全访问不弹批准确认，仍遵守已有拒绝规则与运行时自保护**——工具校验、路径安全、敏感文件拒绝、证据追踪、检查点与交付门禁照常生效。
+- **沙箱只在显式配置时请求开启**（`RIVET_SANDBOX=1`），且**是否可用取决于运行环境**：macOS 有 Seatbelt，Linux/WSL 需 `bwrap`/`firejail`/landlock 兜底，原生 Windows 无轻量级内核后端（`src/tools/sandbox-profile.ts:351-372`、`:389-406`、`:426-433`）。审批档位**不再**联带开关沙箱；无写边界时回滚是兜底。
+- `auto-accept` 是历史别名（wire 值），不属于对外三档——它的显示与行为同「帮我批准」。
 - 项目级信任：未授信项目不加载 hooks / 项目 MCP，安全键剥离；`/trust` 管理。
 - 配置文件层面的默认值是 `agent.approval` 三值（`manual` / `auto-safe`（默认）/ `dangerously-skip-permissions`），与上面三档一一对应。
 - 完整命令清单、规则优先级、路径授权、Windows 行为与故障排查见 [权限与沙箱指南](user-guide-sandbox-permissions.md)。
@@ -509,7 +497,7 @@ tianshu config set-approval auto-safe       # 持久化默认档位
 | `/doctor` | 环境健康检查 + bash 工具用的哪个 shell |
 | `/logs [open [desktop]]` | 本会话日志落点（会话 / 缓存 / 六维 / 桌面 sidecar），含写入门控与回收说明；`open` 在文件管理器中打开 |
 | `/connect` | 连接模型服务商向导（选内置或自定义，填 API 密钥） |
-| `/config` `/settings` `/setup` | 设置面板：子代理路由 / 审查开关（`审查 → 关闭提交后自动审查`） / 识图模型 / 工具档位·审批·默认星域·默认模型 / 镜像·代理·搜索后端。`Tab` 切栏、`Enter` 编辑、`S` 保存，每项标注即时或下次会话生效 |
+| `/config` `/settings` `/setup` | 设置面板：子代理路由 / 审查开关（`审查 → 关闭提交后自动审查`） / 识图模型 / 工具档位·审批·默认任务模式·默认模型 / 镜像·代理·搜索后端。`Tab` 切栏、`Enter` 编辑、`S` 保存，每项标注即时或下次会话生效 |
 | `/cd <path>` | 会话中途切换工作目录（保前缀缓存，会话归属迁往新项目） |
 | `/trust` | 项目信任管理——未授信项目不加载 hooks / 项目 MCP，剥离项目配置安全键 |
 | `/exit` `/quit` | 保存会话并退出 |
@@ -520,9 +508,9 @@ tianshu config set-approval auto-safe       # 持久化默认档位
 |------|------|
 | `/model [name\|list]` | 显示或切换模型/提供商 |
 | `/effort [off\|low\|medium\|high\|max\|auto]` | 控制推理深度（无参数弹出选择面板）。默认 `high`（Pro）/ `medium`（Flash），例行轮自动降档；手动设 `max` 永不被降级 |
-| `/permission [supervise\|auto\|unattended\|manual\|yolo\|allow\|deny\|bash\|remove\|reset\|test]` | 权限模式：监督 / 自动 / 全自动 |
-| `/yes [off]` `/yolo [off]` | 一键全自动，两者同语义（`off` 回到自动）—— 持久化为默认，重启后仍生效 |
-| `/domain [list\|<name>\|auto\|off]` | 查看或切换星域人格 |
+| `/permission [supervise\|auto\|unattended\|manual\|yolo\|allow\|deny\|bash\|remove\|reset\|test]` | 权限模式：请求批准 / 帮我批准 / 完全访问 |
+| `/yes [off]` `/yolo [off]` | 一键完全访问，两者同语义（`off` 回到帮我批准）—— 持久化为默认，重启后仍生效 |
+| `/task-mode [list\|<name>\|auto\|off]` | 查看或切换任务模式（`/domain` 为旧别名，仍可用） |
 
 **规划与编排**
 
@@ -611,7 +599,7 @@ tianshu config set-approval auto-safe       # 持久化默认档位
     "approval": "auto-safe",      // manual | auto-safe | dangerously-skip-permissions
     "crossSessionEnabled": true,  // 跨会话知识共享
     "checkpointEveryTurns": 0,    // Auto 模式检查点间隔（0 = 关）
-    "defaultDomain": "qiming",    // 默认星域（qiming/auto/显式域名）
+    "defaultDomain": "qiming",    // 默认任务模式（qiming/auto/显式模式名）
     "visionModel": {              // 识图桥：主控模型不支持看图时，先转成文字描述
       "provider": "minimax",      // 需已配好 key，且该模型声明 supportsVision
       "model": "MiniMax-M3"

@@ -6,12 +6,17 @@ import { settleWelcomeGreeting, GREETING_SETTLE_MS, type WelcomeGreetingDeps } f
 /** settle 是 fire-and-forget(异步微任务链),断言前让出事件循环。 */
 const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 20))
 
-/** playful morning 池文案=产品契约,改文案须同步此处与 greeting.ts 池注释。 */
-const PLAYFUL_MORNING = [
-  '早上好呀，今天也要元气满满地写代码',
-  '早安~新的一天，代码在等你宠幸',
-  '早早早！要不要先跑个测试热热身',
-  '上午好呀，思路超清晰，最适合开工',
+/** 2026-09 去人设后，三档 voice 共用同一套中性文案（api/greeting.ts 的 VOICE_POOLS
+ *  三键同指 TEMPLATES）。此处的 morning 契约改为「落在这套中性池内」。 */
+const NEUTRAL_MORNING = [
+  '上午好，准备开启什么新任务？',
+  '早啊，代码在等你',
+  '上午好，今天从哪开始？',
+  '早安，一杯咖啡一行代码',
+  '上午好，思路清晰的时候最适合开工',
+  '早，今天有什么计划？',
+  '上午好呀，新的一天新的代码',
+  '早安，先跑个测试热热身',
 ]
 
 function deps(over: Partial<WelcomeGreetingDeps> = {}): WelcomeGreetingDeps & { committed: string[] } {
@@ -101,16 +106,16 @@ test('LLM 启用且有 provider:竞速窗口内返回 LLM 行(fetch mock)', asyn
   }
 })
 
-test('voice 注入(主题风格化):playful 池文案随注入生效(契约锚定)', async () => {
+test('voice 注入(去人设):playful 与 default 同池,无角色化文案', async () => {
   const d = deps({ hour: 8, voice: 'playful' })
   settleWelcomeGreeting(d)
   await settle()
   assert.equal(d.committed.length, 1, '一行原则')
   const text = strip(d.committed[0]!).slice(2)
-  assert.ok(PLAYFUL_MORNING.includes(text), `voice=playful 应命中 playful 池,实得:${text}`)
+  assert.ok(NEUTRAL_MORNING.includes(text), `voice=playful 应命中中性池,实得:${text}`)
 })
 
-test('voice 正规化集成:pastel 主题无注入自动 playful(读 theme.voice,非静态表)', async () => {
+test('voice 正规化集成:pastel 主题无注入也走中性池(去人设后不再分角色池)', async () => {
   setTheme('pastel')
   try {
     const d = deps({ hour: 8 }) // 不注入 voice——走 active theme 的 voice
@@ -118,9 +123,27 @@ test('voice 正规化集成:pastel 主题无注入自动 playful(读 theme.voice
     await settle()
     assert.equal(d.committed.length, 1, '一行原则')
     const text = strip(d.committed[0]!).slice(2)
-    assert.ok(PLAYFUL_MORNING.includes(text), `pastel 主题应自动 playful,实得:${text}`)
+    assert.ok(NEUTRAL_MORNING.includes(text), `pastel 主题应同样命中中性池,实得:${text}`)
   } finally {
     setTheme('graphite')
+  }
+})
+
+test('去人设:全主题问候语都不含角色自称(小天/Nova)', async () => {
+  for (const themeName of ['graphite', 'pastel', 'cyberpunk', 'gemini'] as const) {
+    setTheme(themeName)
+    try {
+      for (const hour of [9, 15, 20]) {
+        const d = deps({ hour })
+        settleWelcomeGreeting(d)
+        await settle()
+        const text = strip(d.committed[0]!).slice(2)
+        assert.ok(!text.includes('小天'), `${themeName} hour=${hour} 不应含「小天」:${text}`)
+        assert.ok(!text.includes('Nova'), `${themeName} hour=${hour} 不应含「Nova」:${text}`)
+      }
+    } finally {
+      setTheme('graphite')
+    }
   }
 })
 

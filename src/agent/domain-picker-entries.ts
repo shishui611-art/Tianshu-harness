@@ -8,7 +8,7 @@
  */
 import { starDomainRegistry } from './star-domain-registry.js'
 import { STAR_GENESIS } from './star-genesis-data.js'
-import type { ActiveStarDomain } from './star-domain.js'
+import { domainDisplayName, domainScenario, domainHow, type ActiveStarDomain } from './star-domain.js'
 
 /**
  * Shared warning shown when a star-domain is switched MID-SESSION. Swapping the
@@ -26,19 +26,20 @@ export const DOMAIN_SWITCH_CACHE_NOTE =
 export interface DomainPickerEntry {
   /** Selection key: 'auto' | domain id. */
   key: string
+  /**
+   * 列表 + 详情区的显示名。内置域 = taskMode.name（如「项目统筹」）；custom 域
+   * 无 taskMode 时回退星域名。**不再展示星名人格**——内部 id/旧星名仍可作输入。
+   */
   name: string
-  motto: string
-  /** 工程别名（如 晨光向导）——custom 域缺省时 UI 回退 tagline。 */
-  alias?: string
-  /** 职责标语（如 破夜指引 · 洞察全景）——custom 域无 tagline 时回退 motto。 */
-  tagline?: string
+  /** 内部 id / 旧星名（如 天权、tianquan）——切换输入仍接受，面板底部给出以便对照。 */
+  legacyName: string
+  /** 适用场景（taskMode.scenario，缺省回退 tagline）——「什么任务选它」。 */
+  scenario: string
+  /** 做法（taskMode.how）——「用它时按什么方式推进」。custom 域缺省时为空串。 */
+  how: string
   /** Secondary dim meta: decisionStyle · keywords. */
   meta: string
-  /** One-shot essence preview (never the full volatileBlock). */
-  essence: string
-  /** 创始星短名（来自 star-genesis-data；custom 域缺省）。 */
-  founder?: string
-  /** 一句话核心专长（来自 star-genesis-data；custom 域缺省）。 */
+  /** 一句话专长（star-genesis expertise；custom 域缺省回退 scenario）。 */
   expertise?: string
   /** Whether this is the session's current selection. */
   current: boolean
@@ -86,33 +87,28 @@ export function buildDomainPickerEntries(
   return [
     {
       key: 'auto',
-      name: 'Auto',
-      motto: '按任务匹配',
-      alias: '按任务匹配',
-      tagline: '关键词自动路由 · 未命中回退天权',
-      meta: 'zìdòng · 关键词自动匹配星域',
-      essence: '根据每条消息内容自动匹配最合适的星域方法论；未命中时回退天权。',
-      // null (env kill switch) has no picker entry → also reflect as Auto-selected.
+      name: '自动匹配',
+      legacyName: 'Auto',
+      scenario: '不确定该用哪种做法时——按每条消息的内容匹配最合适的模式；未命中时回退天权（评估方案）。',
+      how: '关键词自动路由；也可随时用 /task-mode <显示名|ID|旧星名> 手动钉定。',
+      meta: 'zìdòng · 关键词自动匹配',
       current: current === undefined || current === null,
       uiPersona: { separator: 'thin', accent: 'primary', glyph: '❂' },
     },
     ...starDomainRegistry.list().map((d) => {
-      const firstLine = (d.volatileBlock || '')
-        .split('\n')
-        .map((s) => s.trim())
-        .find((s) => s.length > 0) ?? ''
-      const essence = [d.motto, firstLine].filter(Boolean).join(' — ').slice(0, 400)
       const pinyin = DOMAIN_PINYIN_MAP[d.id] ?? d.id
       const genesis = STAR_GENESIS.find((g) => g.key === d.id)
+      const scenario = domainScenario(d)
+      const how = domainHow(d)
       return {
         key: d.id,
-        name: d.name,
-        motto: d.motto ?? '',
-        alias: d.alias,
-        tagline: d.tagline ?? d.motto ?? '',
+        name: domainDisplayName(d),
+        legacyName: d.name,
+        // custom 域缺 taskMode → scenario 回退 tagline；两者都空时用 expertise/meta，
+        // 保证面板不出现空白的适用场景行。
+        scenario: scenario || genesis?.expertise || `${pinyin} · ${d.id}`,
+        how,
         meta: `${pinyin} · ${d.keywords.slice(0, 4).join(',')}`,
-        essence,
-        founder: genesis?.founder,
         expertise: genesis?.expertise,
         current: current != null && current.id === d.id,
         uiPersona: d.uiPersona,

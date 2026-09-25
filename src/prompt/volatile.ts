@@ -280,7 +280,12 @@ export interface VolatileContext {
   activeDomain?: {
     name: string
     volatileBlock: string
+    /** 座右铭——保留字段（会话状态的既有形状），但**不再进 prompt**：
+     *  <star-domain> 标签已去掉 motto 属性（用户验收要求诗句不进提示词）。 */
     motto: string
+    /** 任务模式显示三元组（可选）。有它时 <star-domain> 带 task-mode 属性，
+     *  给模型一个中性的「这是哪种工作方式」标签；custom 域缺省则不带。 */
+    taskMode?: { name: string; scenario: string; how: string }
     /** Top-K 域经验摘要（主控会话）。会话常量：bindSessionDomain 时构建一次，
      *  随 <star-domain> 一起进 FROZEN 前缀 — 不做 per-turn 刷新。 */
     knowledgeBlock?: string
@@ -946,6 +951,8 @@ export function assignSalience(blockContent: string): number {
   // appendix, so this case is not exercised by buildDynamicAppendixParts.
   // Kept for the assignSalience test contract and any future appendix-level
   // domain rendering — identity-critical, highest salience.
+  // 标签名未变（仍以 `<star-domain` 开头）；只去掉了 `motto=` 属性并新增可选
+  // `task-mode=`，故元数据行仍在 `<context>` 校验之外 → 此判定继续生效。
   if (blockContent.startsWith('<star-domain')) return 1.0
   // Plan-mode block governs the entire planning turn — never drop under budget.
   if (blockContent.startsWith('<plan-mode>')) return 0.95
@@ -1173,8 +1180,12 @@ function buildVolatileBlockInternal(ctx: VolatileContext): string {
 
   // star-domain: session-constant identity, folded into the frozen prefix so it
   // enters the exact-prefix cache from turn 1 — provider-agnostic, no habituation
-  // warm-up. name/motto are registry constants (not user input), rendered
-  // unescaped to match the established <star-domain name="..."> shape.
+  // warm-up. name is a registry constant (not user input), rendered unescaped to
+  // match the established <star-domain name="..."> shape.
+  //
+  // 注入形态不含座右铭：`motto=` 属性已移除（用户验收要求「诗句不进提示词」）。
+  // 改为携带中性的“任务模式”标识——显示名 + 模式名，不含角色自称与诗句。
+  // 块的**字节稳定性**不变：同会话内 activeDomain 是常量，该属性不随 turn 变化。
   //
   // 位置（2026-08-01 P1-1）：从 sober/locus 之后移到 frozen **末尾**。不同
   // authority 的 worker 此前在星域块分叉，连带损失其后的 project-instructions /
@@ -1186,10 +1197,14 @@ function buildVolatileBlockInternal(ctx: VolatileContext): string {
     // knowledgeBlock: session-constant top-K domain lessons (bound once with the
     // domain) — lesson text is agent-written store content, so it IS escaped.
     const knowledge = d.knowledgeBlock ? `\n<domain-knowledge>\n${escapeXml(d.knowledgeBlock)}\n</domain-knowledge>` : ''
-    // 全星域共享执行纪律（字节恒定，随 star-domain 进 FROZEN 前缀）。
-    // 瑶光域在自己的 systemPromptSuffix 中保留放大版，此处是十域共同的底线。
-    const sharedDiscipline = '\n执行纪律（全星域共享）：绿非证明，复现即证——宣称已修/已验证前，先用工具复现结论；报告里的每个数字要能指到一条真实验证记录。'
-    parts.push(`<star-domain name="${d.name}" motto="${d.motto}">${d.volatileBlock}${sharedDiscipline}${knowledge}</star-domain>`)
+    // 全模式共享执行纪律（字节恒定，随 star-domain 块进 FROZEN 前缀）。
+    // 瑶光域在自己的 systemPromptSuffix 中保留放大版，此处是所有模式共同的底线。
+    // 措辞中性化：这是纪律本身，不是某个角色的台词——纪律保留，拟人化措辞去掉。
+    const sharedDiscipline = '\n执行纪律：绿非证明，复现即证——宣称已修/已验证前，先用工具复现结论；报告里的每个数字要能指到一条真实验证记录。'
+    // task-mode 属性：只用「显示名 + 模式名」标注这是哪种工作方式，不含座右铭。
+    // custom 域没有 taskMode 时退化为仅 name（与旧形态的差异只有 motto 被删）。
+    const mode = d.taskMode?.name ? ` task-mode="${d.taskMode.name}"` : ''
+    parts.push(`<star-domain name="${d.name}"${mode}>${d.volatileBlock}${sharedDiscipline}${knowledge}</star-domain>`)
   }
 
   // NOTE: activeDomain IS rendered here (above, frozen 末尾) — it is a session

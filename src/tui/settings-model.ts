@@ -141,9 +141,9 @@ export interface SettingsCategory {
 }
 
 export const APPROVAL_OPTIONS: readonly SettingsOption[] = [
-  { id: 'auto-safe', label: '自动 — 低/无风险自动，高风险仍确认（auto-safe）' },
-  { id: 'manual', label: '监督 — 每个高风险工具都确认（manual）' },
-  { id: 'dangerously-skip-permissions', label: '全自动 — 免审批，写沙箱仍开（dangerously-skip-permissions）' },
+  { id: 'auto-safe', label: '帮我批准 — 低风险自动执行，高风险仍问（auto-safe）' },
+  { id: 'manual', label: '请求批准 — 需要批准的操作先问（manual）' },
+  { id: 'dangerously-skip-permissions', label: '完全访问 — 不弹批准确认（dangerously-skip-permissions）' },
 ]
 
 export const TOOL_PRESET_OPTIONS: readonly SettingsOption[] = [
@@ -709,7 +709,7 @@ function basicsCategory(): SettingsCategory {
       label: '工具档位',
       block: 'toolPreset',
       effect: 'next-session',
-      hint: '装配工具集：minimal 30 日常全能力；frontend 31（默认）+ browser_debug；full 51 全集（编排/semantic/computer_use/办公族，system prompt 更贵）；taiyi 14 最小评测档——太一域钉定自动落此档。某域专属档位用「最小集绑定星域」或 runtime.domains 按域覆盖',
+      hint: '装配工具集：minimal 30 日常全能力；frontend 31（默认）+ browser_debug；full 51 全集（编排/semantic/computer_use/办公族，system prompt 更贵）；taiyi 14 最小评测档——太一域钉定自动落此档。某模式专属档位用「最小集绑定任务模式」或 runtime.domains 按模式覆盖',
       options: TOOL_PRESET_OPTIONS,
       get: d => d.basics.toolPreset,
       set: (d, value) => withBasics(d, { toolPreset: value }),
@@ -761,7 +761,7 @@ function basicsCategory(): SettingsCategory {
       label: '审批模式',
       block: 'approval',
       effect: 'immediate',
-      hint: '监督 / 自动 / 全自动。wire：manual / auto-safe / dangerously-skip-permissions',
+      hint: '请求批准 / 帮我批准 / 完全访问。wire：manual / auto-safe / dangerously-skip-permissions。完全访问不弹批准确认，仍遵守已有拒绝规则与运行时自保护；写沙箱不随档位开启（仅显式配置时请求，且取决于运行环境）',
       options: APPROVAL_OPTIONS,
       get: d => d.basics.approval,
       set: (d, value) => withBasics(d, { approval: value }),
@@ -778,23 +778,23 @@ function basicsCategory(): SettingsCategory {
     }),
     {
       id: 'agent.defaultDomain',
-      label: '默认星域',
+      label: '默认任务模式',
       kind: 'enum',
       block: 'defaultDomain',
       effect: 'next-session',
-      hint: '新会话的起始星域（改变方法论与决策阈值，不改工具）；留空走默认域启明',
+      hint: '新会话的起始任务模式（改变方法论与决策阈值，不改工具）；留空走默认模式日常开发',
       display: d => d.basics.defaultDomain || UNSET_LABEL,
       options: (_d, env) => env.domains.map(x => ({ id: x.key, label: `${x.key} — ${x.name}` })),
       selectedId: d => d.basics.defaultDomain,
-      apply: (d, value) => (value.trim() ? withBasics(d, { defaultDomain: value.trim() }) : { error: '星域不能为空' }),
+      apply: (d, value) => (value.trim() ? withBasics(d, { defaultDomain: value.trim() }) : { error: '任务模式不能为空' }),
     },
     {
       id: 'agent.domainBind',
-      label: '最小集绑定星域',
+      label: '最小集绑定任务模式',
       kind: 'enum',
       block: 'domainBind',
       effect: 'next-session',
-      hint: '选中某域：defaultDomain 钉定该域 + taiyi 14 件最小工具档——rivet 启动即该域的最小集会话，无需启动参数（不含 lean 资源减配）。清空 = 恢复默认域',
+      hint: '选中某任务模式：defaultDomain 钉定该模式 + taiyi 14 件最小工具档——rivet 启动即该模式的最小集会话，无需启动参数（不含 lean 资源减配）。清空 = 恢复默认模式',
       display: d => d.basics.domainBind || '（不绑定）',
       options: (_d, env) => [
         { id: '', label: '（不绑定）' },

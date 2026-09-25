@@ -8,6 +8,7 @@
  */
 import { color } from '../engine/ansi.js'
 import type { RivetTheme } from '../theme.js'
+import stringWidth from 'string-width'
 import { DOMAIN_SWITCH_CACHE_NOTE } from '../../agent/domain-picker-entries.js'
 import {
   frameTop as formatBorder,
@@ -26,21 +27,17 @@ import {
 export interface DomainPickerEntry {
   /** 选择键：'auto' | domain id */
   key: string
-  /** 展示名（中文星域名或 Auto 标签） */
+  /** 显示名（内置域 = taskMode.name，如「项目统筹」；custom 域回退星域名） */
   name: string
-  /** 座右铭（可空） */
-  motto: string
-  /** 工程别名（如 晨光向导）——custom 域缺省时回退 tagline */
-  alias?: string
-  /** 职责标语（如 破夜指引 · 洞察全景）——缺省时回退 motto */
-  tagline?: string
+  /** 内部 id / 旧星名（如 天权、tianquan）——仅供对照与切换输入，不参与主要展示 */
+  legacyName: string
+  /** 适用场景（什么任务选它） */
+  scenario: string
+  /** 做法（用它时按什么方式推进） */
+  how: string
   /** 次要元信息（dim）：decisionStyle · keywords */
   meta: string
-  /** 选中项的一段式 essence 预览（不转储整段 volatileBlock） */
-  essence: string
-  /** 创始星短名（来自 star-genesis-data；auto / custom 域缺省） */
-  founder?: string
-  /** 一句话核心专长（来自 star-genesis-data；auto / custom 域缺省） */
+  /** 一句话专长（star-genesis；custom 域缺省） */
   expertise?: string
   /** 是否为当前生效项 */
   current: boolean
@@ -54,6 +51,11 @@ export interface DomainPickerEntry {
 export interface DomainPickerData {
   entries: DomainPickerEntry[]
   selectedIndex: number
+}
+
+const ANSI_RE = /\x1B\[[0-9;]*[a-zA-Z]/g
+function stripAnsiPlain(s: string): string {
+  return s.replace(ANSI_RE, '')
 }
 
 /**
@@ -95,11 +97,16 @@ export function renderDomainPicker(data: DomainPickerData, width: number, height
     const cursor = selected ? color(CURSOR, currentAccent, { bold: true }) : ' '
     const mark = e.current ? color(eGlyph, eAccent, { bold: true }) : selected ? color(eGlyph, currentAccent) : color(eGlyph, theme.dim)
     const name = selected ? color(e.name, currentAccent, { bold: true }) : color(e.name, theme.secondary)
-    // 行内：工程别名 + 职责标语——一眼看懂这颗星干什么；创始星移入详情区。
-    const alias = e.alias ? color(` · ${e.alias}`, theme.muted) : ''
-    const tagline = e.tagline ? color(`  ${e.tagline}`, theme.dim) : ''
-    const head = `${cursor} ${mark} ${name}${alias}${tagline}`
-    lines.push(padLine(head, width, theme))
+    // 行内：旧星名/ID 对照 + 适用场景首段——一眼看懂这个模式干什么。做法移入详情区。
+    const legacy = e.legacyName && e.legacyName !== e.name ? color(` (${e.legacyName})`, theme.dim) : ''
+    const head = `${cursor} ${mark} ${name}${legacy}`
+    const headWidth = width - 2 - (selected ? 1 : 0)
+    const scenarioRoom = headWidth - stringWidth(stripAnsiPlain(head)) - 2
+    if (e.scenario && scenarioRoom > 8) {
+      lines.push(padLine(`${head}  ${color(e.scenario.slice(0, scenarioRoom), theme.dim)}`, width, theme))
+    } else {
+      lines.push(padLine(head, width, theme))
+    }
     row++
   }
   if (win.end < data.entries.length && row + 1 <= listRows) {
@@ -118,26 +125,27 @@ export function renderDomainPicker(data: DomainPickerData, width: number, height
       : '─'
   lines.push(padLine(` ${color(sepChar.repeat(Math.max(0, innerWidth - 1)), currentAccent)}`, width, theme))
 
-  // 详情区：别名徽章 → 职责标语 + 创始星 → motto → 提示词精华（essence 多行）
+  // 详情区：显示名 → 适用场景 → 做法（均为白话描述，不含座右铭/创始星/角色台词）
   const previewLines: string[] = []
   if (current) {
     const glyph = current.uiPersona?.glyph ?? '●'
-    const aliasPart = current.alias ? ` · ${current.alias}` : ''
-    previewLines.push(color(`  ${glyph}  ${current.name}${aliasPart}`, currentAccent, { bold: true }))
+    previewLines.push(color(`  ${glyph}  ${current.name}`, currentAccent, { bold: true }))
 
-    const founderPart = current.founder ? ` · 创始星 ${current.founder}` : ''
-    const taglineText = current.tagline ? `${current.tagline}${founderPart}` : (current.founder ? `创始星 ${current.founder}` : (current.meta || ''))
-    previewLines.push(` ${color(taglineText, theme.muted)}`)
+    const idLine = current.legacyName && current.legacyName !== current.name
+      ? `  ${current.legacyName}${current.key !== 'auto' ? ` · ${current.key}` : ''}`
+      : current.key !== 'auto' ? `  ${current.key}` : ''
+    if (idLine) previewLines.push(color(idLine.trimEnd(), theme.dim))
 
-    previewLines.push(` ${color(`「${current.motto}」`, theme.dim)}`)
-    previewLines.push(` ${color('─'.repeat(Math.max(0, innerWidth - 2)), theme.dim)}`)
-
-    // 提示词精华：motto + volatileBlock 首行（entry.essence），按宽折行填满剩余详情区
-    const desc = current.essence || current.expertise || ''
-    const wrappedDesc = wrapToWidth(desc, innerWidth - 1, Math.max(1, detailRows - previewLines.length))
-    for (const d of wrappedDesc) {
+    previewLines.push(` ${color('适用场景', theme.secondary, { bold: true })}`)
+    for (const w of wrapToWidth(current.scenario || current.expertise || '', innerWidth - 1, 3)) {
+      if (previewLines.length < detailRows) previewLines.push(`  ${color(w, theme.muted)}`)
+    }
+    if (current.how) {
       if (previewLines.length < detailRows) {
-        previewLines.push(` ${color(d, theme.muted)}`)
+        previewLines.push(` ${color('做法', theme.secondary, { bold: true })}`)
+      }
+      for (const w of wrapToWidth(current.how, innerWidth - 1, Math.max(1, detailRows - previewLines.length))) {
+        if (previewLines.length < detailRows) previewLines.push(`  ${color(w, theme.muted)}`)
       }
     }
   }
@@ -149,7 +157,7 @@ export function renderDomainPicker(data: DomainPickerData, width: number, height
   // 常驻备注：切换星域的缓存代价（预防性提示，切换后的忠告见 slash-commands）。
   lines.push(padLine(` ${color(DOMAIN_SWITCH_CACHE_NOTE, theme.dim)}`, width, theme))
 
-  lines.push(formatFooter(compactHints([['←/→', '切换'], ['↑↓', '选择'], ['Enter', '应用'], ['g', '碑文'], ['S', '设为默认'], ['Esc', '取消']]), width, theme, 'subtle'))
+  lines.push(formatFooter(compactHints([['←/→', '切换'], ['↑↓', '选择'], ['Enter', '应用'], ['g', '说明'], ['S', '设为默认'], ['Esc', '取消']]), width, theme, 'subtle'))
   lines.push(formatBottomBorder(width, theme, 'subtle'))
   return lines
 }

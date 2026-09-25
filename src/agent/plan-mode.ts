@@ -65,14 +65,15 @@ export function shiftTabPlanToggleHint(
   }
   switch (underlyingMode) {
     case 'dangerously-skip-permissions':
-      return '⏵ 全自动 — 工具免审批（写沙箱仍开）'
+      // 写边界一层不随本档自动开启（沙箱默认关，仅显式配置时请求），故不写「写沙箱仍开」。
+      return `⏵ ${label} — 工具免审批`
     case 'auto-accept':
-      return '⏵ 自动 — 写操作也免审批（隐档）'
+      return `⏵ ${label} — 写操作也免审批（隐档）`
     case 'manual':
-      return '⏵ 监督 — 高风险工具都需确认'
+      return `⏵ ${label} — 高风险工具都需确认`
     case 'auto-safe':
     default:
-      return '⏵ 自动 — 低风险自动，高风险仍确认'
+      return `⏵ ${label} — 低风险自动，高风险仍确认`
   }
 }
 

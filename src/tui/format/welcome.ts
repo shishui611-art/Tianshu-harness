@@ -41,7 +41,7 @@ import { color } from '../engine/ansi.js'
 import { displayWidth, truncateToDisplayWidth } from '../width.js'
 import { boxCharsFor } from '../box-chars.js'
 import { useAsciiBorders } from '../term-caps.js'
-import type { RivetTheme, ThemeVoice } from '../theme.js'
+import type { RivetTheme } from '../theme.js'
 
 export interface FormatWelcomeInput {
   modelName: string
@@ -90,9 +90,9 @@ const WIDE = { ambiguousAsWide: true }
 // ── 文案(定稿,见规格 §五)──────────────────────────────────────────
 const MISSION_ZH = '把星辰带给每一位开发者'
 const MISSION_EN = 'Models as partners, not tools.'
-const HINT_DOMAIN_CMD = '/domain'
-const HINT_DOMAIN_DESC = '查看星域描述与切换 · 不同星域工程能力不同'
-const HINT_DOMAIN_SHORT = '星域描述与切换'
+const HINT_DOMAIN_CMD = '/task-mode /domain'
+const HINT_DOMAIN_DESC = '查看并按任务选模式 · 适用场景与做法'
+const HINT_DOMAIN_SHORT = '任务模式切换'
 const HINT_HANDOFF = '满60%交接新会话'
 const HINT_CACHE_A = '中途切'
 const HINT_CACHE_CMDS = '/model /domain'
@@ -115,12 +115,9 @@ const GUIDE_EXAMPLES = ['看看这个项目的结构', '帮我跑一下测试，
  *  的 36 列还短一格，故窄终端不会因此丢提示）。 */
 const GUIDE_HINT = '直接开始 · Tab 补全路径 · / 浏览全部命令 · /theme 换肤'
 const GUIDE_HINT_SHORT = '直接开始 · / 命令 · /theme 换肤'
-/** guide intro 角色台词(2026-09,voice 角色化):playful=星灵小天 / tech=Nova 助手。
- *  与问候语语气池同源同 voice——主题风格化完整打包。缺省回落 GUIDE_INTRO 中性链。 */
-const GUIDE_INTRO_VOICE: Partial<Record<ThemeVoice, string>> = {
-  playful: '嗨！我是小天，你的终端星灵——想做什么直接说',
-  tech: 'Nova 在线。目标已就绪——直接下达任务',
-}
+/* 语气角色化已移除（2026-09 去人设）：guide intro 在所有主题下走同一套中性链，
+   不再按 theme.voice 产出角色台词。theme.voice 字段保留（主题仍标 voice，
+   missionShimmer 的色带变体用它），但不影响任何文案。 */
 
 /** 5×5 点阵字模(TIANSHU / RIVET 通用字形库)。 */
 const BLOCK_FONT: Record<string, string[]> = {
@@ -389,8 +386,7 @@ function entryHintLines(theme: RivetTheme, ascii: boolean, cols: number): string
  *  整行(含 glyph 前缀)装不下降档、再装不下省略——与 entryHint 同构,
  *  CJK 终端绝不折行。
  *
- *  voice 角色化(2026-09,主题风格化):theme.voice=playful/tech 时 intro 换
- *  角色台词(星灵小天 / Nova 助手)——「换主题=换伙伴」;窄档回落中性链。 */
+ *  voice 不参与文案：所有主题走同一套中性 intro（角色台词 2026-09 已移除）。 */
 function guideLines(theme: RivetTheme, ascii: boolean, cols: number): string[] {
   const star = ascii ? '*' : '✦'
   const enter = ascii ? '-' : '⏎'
@@ -398,9 +394,7 @@ function guideLines(theme: RivetTheme, ascii: boolean, cols: number): string[] {
   /* 档位判定必须计入「  glyph 」前缀——此前只测文本宽,44 列下 hint full
    *  档(文本 41)选中后整行 46 折行(瑶光反证抓到)。 */
   const glyphW = (glyph: string, text: string): number => displayWidth(`  ${glyph} ${text}`, WIDE)
-  const voiceIntro = theme.voice !== 'default' ? GUIDE_INTRO_VOICE[theme.voice] : undefined
-  const intro = voiceIntro && glyphW(star, voiceIntro) <= cols ? voiceIntro
-    : glyphW(star, GUIDE_INTRO) <= cols ? GUIDE_INTRO
+  const intro = glyphW(star, GUIDE_INTRO) <= cols ? GUIDE_INTRO
     : glyphW(star, GUIDE_INTRO_SHORT) <= cols ? GUIDE_INTRO_SHORT
     : glyphW(star, GUIDE_INTRO_TINY) <= cols ? GUIDE_INTRO_TINY
     : null

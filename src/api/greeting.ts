@@ -11,9 +11,9 @@ import { normalizeBaseUrl } from './endpoint-map.js'
  * 归属边界:进程内内存缓存(llmCache,按北京日期+时段)留在 route 侧——那是
  * sidecar 进程态(桌面端高频打开欢迎页);CLI 每进程至多一次调用,不需要缓存。
  *
- * 语气池(2026-09,风格化):算法模板按 GreetingVoice 选池——主题风格化需求下,
- * CLI 侧按 active theme 映射 voice(pastel→playful / cyberpunk·gemini→tech),
- * 桌面 route 不传 voice 走 default,行为零变化。文案约束:≤25 字、无 emoji、
+ * 语气池(2026-09,已中性化):早先按 GreetingVoice 分角色池(playful 粉彩/tech 霓虹),
+ * 去人设后三档共用同一套中性文案;voice 参数与签名保留(桌面 route / CLI settle 依赖),
+ * 池结构不再产出角色腔,也不再因主题而变。文案约束:≤25 字、无 emoji、
  * 纯终端安全字符(颜文字会折行/豆腐,禁用)。
  */
 
@@ -68,77 +68,20 @@ const TEMPLATES: Record<string, string[]> = {
   ],
 }
 
-// ── 语气池:playful(粉彩二次元向)/ tech(霓虹科技向)──────────────────
-// 主题风格化(2026-09):pastel 主题配 playful、cyberpunk/gemini 配 tech。
-// 每池 5 时段 × 4-5 条;措辞守终端纪律——无 emoji、无颜文字、≤25 字。
+// ── 语气池:已中性化(2026-09 去人设)──────────────────────────────────
+// 此前 playful/tech 是角色化池(pastel 粉彩二次元向 / cyberpunk·gemini 霓虹科技向),
+// 2026-09 去人设时删除角色腔:三档 voice 现在共用同一套中性、简短文案。
+// 保留 voice 参数与池结构是为了不改 pickGreetingTemplate 签名(桌面 route / CLI
+// settle 依赖),也为将来重新分化留位——但**不得**再放角色自称与拟人化措辞。
 
 const VOICE_POOLS: Record<GreetingVoice, Record<string, string[]>> = {
   default: TEMPLATES,
-  playful: {
-    morning: [
-      '早上好呀，今天也要元气满满地写代码',
-      '早安~新的一天，代码在等你宠幸',
-      '早早早！要不要先跑个测试热热身',
-      '上午好呀，思路超清晰，最适合开工',
-    ],
-    noon: [
-      '中午好~吃饱了才有力气 debug',
-      '午安！起来伸个懒腰吧',
-      '中午啦，代码不会跑，先去吃饭饭',
-    ],
-    afternoon: [
-      '下午好呀，继续冲鸭',
-      '下午茶时间到，顺手 review 一波？',
-      '下午好~今天进度怎么样啦',
-      '午后效率最高，一起加油冲',
-    ],
-    evening: [
-      '晚上好呀，今天的 commit 整理了吗',
-      '入夜啦，最适合专心写代码的时刻',
-      '晚上好~要不要总结一下今天的成果',
-      '夜色正好，debug 也很有感觉哦',
-    ],
-    night: [
-      '夜深啦，早点休息哦',
-      '凌晨了还在写代码，身体要紧呀',
-      '深夜好~保存一下，明天再战',
-      '这么晚了，代码会等你的，去睡吧',
-    ],
-  },
-  tech: {
-    morning: [
-      '系统启动完毕。今日目标已就绪',
-      '晨间自检通过——建议先规划任务',
-      '上午好。缓存预热完成，随时开工',
-      '新的一天。先跑一轮测试校准状态',
-    ],
-    noon: [
-      '午间维护窗口：建议暂停充电',
-      '中午了。代码不会跑，你需要休息',
-      '午安。下午的算力已为你就绪',
-    ],
-    afternoon: [
-      '下午好。效率曲线处于峰值区间',
-      '午后会话已开启，继续推进主线',
-      '下午好。同步一下当前进度？',
-      '黄金时段，专注力拉满',
-    ],
-    evening: [
-      '晚间会话开始。提交今日改动？',
-      '夜幕降临，进入深度工作模式',
-      '晚上好。总结今日成果，规划明日',
-      '夜间构建窗口已开启，适合收尾',
-    ],
-    night: [
-      '深夜模式。建议保存并休眠',
-      '凌晨了。代码明天还在，健康是硬约束',
-      '夜行者你好。注意休息，明日再战',
-      '深夜了。当前进度已存档，去睡吧',
-    ],
-  },
+  playful: TEMPLATES,
+  tech: TEMPLATES,
 }
 
-/** 语气档:default(中性)/ playful(粉彩活泼)/ tech(科技冷静)。 */
+/** 语气档:default(中性)/ playful(粉彩活泼)/ tech(科技冷静)。2026-09 去人设后
+ *  三档共用同一套中性文案——保留类型是为了不动桌面 route 依赖的签名。 */
 export type GreetingVoice = 'default' | 'playful' | 'tech'
 
 /** 时段分区:5 晨 / 11 午 / 14 午后 / 18 晚 / 23 深夜。 */
@@ -207,7 +150,7 @@ export async function generateGreetingLlm(
   const now = new Date()
   const wd = weekdayName(now, locale)
 
-  const systemPrompt = `你是天枢桌面终端的欢迎助手。当前是${wd}${slotLabel[slot] ?? ''}${hour}点左右。请用中文生成一句温暖、有人文关怀的问候语送给开发者。不超过25字。不要加称呼（如"亲爱的"）、不要感叹号堆砌、不要emoji。`
+  const systemPrompt = `生成一句简短、日常的中文问候语（在此向开发者问候）。当前是${wd}${slotLabel[slot] ?? ''}${hour}点左右。不超过25字。不含角色自称与拟人化称呼、不加称呼（如"亲爱的"）、不要感叹号堆砌、不要emoji。`
 
   const body = {
     model,

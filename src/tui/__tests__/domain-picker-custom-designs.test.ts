@@ -14,7 +14,7 @@ describe('renderTabBar UI Integration', () => {
   it('renders standard centered Tab Bar in all three pickers', () => {
     const dData: DomainPickerData = {
       entries: [
-        { key: 'auto', name: 'Auto', motto: '自动', meta: 'meta', essence: 'essence', current: true },
+        { key: 'auto', name: '自动匹配', legacyName: 'Auto', scenario: '自动', how: '', meta: 'meta', current: true },
       ],
       selectedIndex: 0,
     }
@@ -44,19 +44,21 @@ describe('renderDomainPicker Star Domain Custom Designs', () => {
       entries: [
         {
           key: 'tianshu',
-          name: '天枢',
-          motto: '执中调度，以全貌定向',
+          name: '项目统筹',
+          legacyName: '天枢',
+          scenario: '跨模块或跨文件的改动、需要权衡架构取舍的规划。',
+          how: '先建全局视图再动手，把复杂任务拆成可独立验证的单元。',
           meta: 'methodical',
-          essence: '全貌不是为了快，是为了对。',
           current: true,
           uiPersona: { separator: 'thin', accent: 'secondary', glyph: '✹' },
         },
         {
           key: 'pojun',
-          name: '破军',
-          motto: '好男儿当负三尺剑',
+          name: '探索新方案',
+          legacyName: '破军',
+          scenario: '边界未知、需要快速试错探明可行性的任务。',
+          how: '选一条最短路径先验证，失败即边界信息。',
           meta: 'bold',
-          essence: '直觉指向未知。',
           current: false,
           uiPersona: { separator: 'thick', accent: 'error', glyph: '✷' },
         },
@@ -76,9 +78,12 @@ describe('renderDomainPicker Star Domain Custom Designs', () => {
     const hasThinDivider = lines.some(l => stripAnsi(l).includes('───') && !stripAnsi(l).includes('✹'))
     assert.ok(hasThinDivider)
 
-    // 新布局（32b39edfe）：详情区徽章行带 glyph+星名，motto 独立成行
-    assert.ok(lines.some(l => stripAnsi(l).includes('✹') && stripAnsi(l).includes('天枢')), '徽章行应含 glyph 与星名')
-    assert.ok(lines.some(l => stripAnsi(l).includes('「执中调度')), 'motto 独立行保留')
+    // 任务模式改版：详情区徽章行带 glyph+显示名，改为「适用场景 / 做法」两段白话描述
+    assert.ok(lines.some(l => stripAnsi(l).includes('✹') && stripAnsi(l).includes('项目统筹')), '徽章行应含 glyph 与显示名')
+    assert.ok(lines.some(l => stripAnsi(l).includes('适用场景')), '详情区含适用场景')
+    assert.ok(lines.some(l => stripAnsi(l).includes('做法')), '详情区含做法')
+    // 人设退场：座右铭、创始星、角色台词不再出现在面板任何一行
+    assert.ok(!lines.some(l => stripAnsi(l).includes('「')), '不再渲染 motto 引号行')
   })
 
   it('adapts divider line for Pojun style (thick / ━)', () => {
@@ -86,10 +91,11 @@ describe('renderDomainPicker Star Domain Custom Designs', () => {
       entries: [
         {
           key: 'pojun',
-          name: '破军',
-          motto: '好男儿当负三尺剑',
+          name: '探索新方案',
+          legacyName: '破军',
+          scenario: '边界未知、需要快速试错的任务。',
+          how: '选一条最短路径先验证。',
           meta: 'bold',
-          essence: '直觉指向未知。',
           current: true,
           uiPersona: { separator: 'thick', accent: 'error', glyph: '✷' },
         },

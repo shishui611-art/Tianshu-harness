@@ -9,9 +9,9 @@ import type { DomainDriftResult } from '../agent/domain-drift-detector.js'
 export function formatDomainDriftNudge(drift: DomainDriftResult): string {
   return (
     `⚡ 检测到任务重心可能已从「${drift.currentName}」转为「${drift.recommendedName}」方向。` +
-    '当前会话保持不变（会话内切换星域会重建前缀缓存）。四选一：' +
+    '当前会话保持不变（会话内切换任务模式会重建前缀缓存）。四选一：' +
     `① /capsule ${drift.recommendedName} —— 把${drift.recommendedName}的完整认知方法注入本轮对话（消息级追加，零缓存代价，最多同时佩戴 2 枚）；` +
-    `② 新开一个会话进入${drift.recommendedName}（/domain ${drift.recommendedId}）专做审查与规划，当前会话继续执行——多会话多星域并行，各会话前缀缓存互不影响，审查/规划结果交回当前会话采纳执行；` +
+    `② 新开一个会话进入${drift.recommendedName}（/domain ${drift.recommendedId}）专做审查与规划，当前会话继续执行——多会话多模式并行，各会话前缀缓存互不影响，审查/规划结果交回当前会话采纳执行；` +
     '③ 先 /handoff 写交接摘要，再新开会话选择 Auto；' +
     '④ 忽略——任务方向未变时不建议动。'
   )

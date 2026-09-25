@@ -20,6 +20,7 @@ import { formatTokenCount } from './spinner-status.js'
 import { formatAuthorityLabel, formatWorkerIdentity } from './profile-labels.js'
 import { DOMAIN_SWITCH_CACHE_NOTE } from '../../agent/domain-picker-entries.js'
 import type { GenesisEntry } from '../../agent/star-genesis-data.js'
+import { STAR_DOMAINS, type StarDomainId } from '../../agent/star-domain-data.js'
 import type { TranscriptMessage } from '../scrollback-transcript.js'
 import type { ConnectView } from '../connect-flow.js'
 import type { InitView } from '../init-flow.js'
@@ -256,7 +257,7 @@ export function renderStarmap(data: StarmapData, width: number, height: number, 
   const lines: string[] = []
 
   lines.push(formatBorder(width, theme, 'subtle'))
-  lines.push(formatTitleLeft(data.title ?? '星域总览', width, theme))
+  lines.push(formatTitleLeft(data.title ?? '任务模式总览', width, theme))
 
   // Column widths
   const glyphWidth = 5
@@ -737,9 +738,27 @@ function layoutGenesisCard(data: DomainGenesisCardData, width: number, height: n
 }
 
 /**
+ * 创世碑文卡的副题文本——**永不返回 motto**（诗句是叙事存档，不上屏）。
+ *
+ * 回退链（保证非空、无 undefined）：`taskMode.scenario → taskMode.how →
+ * expertise → founder`。数据源按 key 从 STAR_DOMAINS 直查，避免为了一个
+ * 展示字段去动 main.ts / star-genesis-data.ts 的数据形状。
+ */
+function genesisSubtitle(g: GenesisEntry): string {
+  const domain = STAR_DOMAINS[g.key as StarDomainId]
+  const mode = domain?.taskMode
+  const candidates = [mode?.scenario, mode?.how, g.expertise, g.founder]
+  for (const c of candidates) {
+    const t = typeof c === 'string' ? c.trim() : ''
+    if (t) return t
+  }
+  return ''
+}
+
+/**
  * 创世碑文卡（domain-picker 的第二个 tab 视图）。
  *
- * 头（glyph + 星名 + motto + 创始星）→ 印记 seal → 按「面」分节的碑文（可滚动）。
+ * 头（glyph + 星名 + 模式说明 + 创始星）→ 印记 seal → 按「面」分节的碑文（可滚动）。
  * ←/→ 换域、↑↓ 滚动、g/Esc 返回选择页（键位在 app.ts）。
  */
 export function renderDomainGenesisCard(data: DomainGenesisCardData, width: number, height: number, theme: RivetTheme): string[] {
@@ -755,7 +774,10 @@ export function renderDomainGenesisCard(data: DomainGenesisCardData, width: numb
   const body: string[] = []
   const head = ` ${data.glyph} ${color(`${g.name} · ${g.faces[0]!.model}`, accent, { bold: true })}`
   body.push(head)
-  body.push(` ${color(`「${g.motto}」`, theme.dim)}`)
+  // 副题：不再上屏 motto（诗句属叙事存档，用户验收要求诗句不进用户可见文案）。
+  // 改显示该模式的白话说明；回退链保证**永不空白**，也不出现 undefined。
+  const subtitle = genesisSubtitle(g)
+  if (subtitle) body.push(` ${color(subtitle, theme.dim)}`)
   if (g.sigil) {
     body.push(` ${color(`印记 ${g.sigil}`, accent)}`)
     for (const note of g.sigilNote ?? []) {
@@ -782,7 +804,7 @@ export function renderDomainGenesisCard(data: DomainGenesisCardData, width: numb
   for (let i = visible.length; i < total.bodyRows; i++) lines.push(padLine('', width, theme))
 
   const scrollHint = total.maxScroll > 0 ? ` · ${scroll + 1}/${total.maxScroll + 1}屏` : ''
-  lines.push(formatFooter(compactHints([['←/→', '换星域'], ['↑↓', `滚动${scrollHint}`], ['g/Esc', '返回']]), width, theme, 'subtle'))
+  lines.push(formatFooter(compactHints([['←/→', '换模式'], ['↑↓', `滚动${scrollHint}`], ['g/Esc', '返回']]), width, theme, 'subtle'))
   lines.push(formatBottomBorder(width, theme, 'subtle'))
   return lines
 }

@@ -80,7 +80,9 @@ rivet
 RIVET_SANDBOX=1 rivet
 ```
 
-全自动（`dangerously-skip-permissions`，别名 YOLO）会**自动开启**沙箱 —— 免审批不等于免边界，详见 2.4。
+沙箱**只由显式配置开启** —— `dangerously-skip-permissions`（完全访问档）**不会**替你打开它。完全访问不弹批准确认，但仍遵守已有拒绝规则与运行时自保护；要不要内核写边界是你自己的选择，详见 2.4。
+
+**是否可用取决于运行环境**：`sandboxRequested()` 只认 `RIVET_SANDBOX=1` / `=learn`（`src/tools/sandbox-profile.ts:389-391`），`applySandboxPolicyForApprovalMode()` 已是 no-op（`:426-433`）；`selectSandboxBackend()` 在原生 Windows 上恒返回 `'none'`（`:351-372`）。请求了却拿不到后端时，`getSandboxStartupNotice()` 只发一条警告（`:480-498`），命令以无写边界执行——不是静默降级成"有边界"。
 
 要在任何模式下都强制关闭：
 
@@ -143,18 +145,22 @@ RIVET_SANDBOX=0 rivet
 - 授权是会话级内存态，配置文件本身就是持久来源——改配置即改授权
 - CLI 与桌面端（sidecar）都会在会话创建时加载
 
-### 2.4 全自动与沙箱 —— 免审批不等于免边界
+### 2.4 完全访问与沙箱 —— 两条独立的轴
 
-> **语义变更（2026-07-26）**：此前 `dangerously-skip-permissions` 会自动批准外出路径授权、且不开沙箱。现在**反过来**：全自动（别名 YOLO）自动**开启**沙箱，而扩大写边界是唯一幸存的审批。
+> **语义变更（2026-09-07）**：沙箱与审批模式**已经解耦**。审批档位不再影响沙箱开关（`src/tools/sandbox-profile.ts:426-433` 的 `applySandboxPolicyForApprovalMode` 现在是 no-op）；沙箱**只由显式 `RIVET_SANDBOX=1`（或 `=learn` 采集模式）请求开启**（`:389-391` 的 `sandboxRequested`）。
+>
+> 历史上的两轮翻转都记在这里以免误解：2026-07-26 曾规定「完全访问自动开启沙箱」；2026-09-07 的用户产品决策把「完全权限」定义为**免审批 + 无写沙箱**（沙箱会把 `~/.supabase` 等外部路径写入拦死，与无人值守的全自动场景冲突），于是沙箱改为纯 opt-in。
 
-审批和沙箱是两条独立的轴：**「谁被问」** 和 **「能写到哪」**。把它们混在一起会得到错误的耦合方向：
+审批和沙箱是两条独立的轴：**「谁被问」** 和 **「能写到哪」**。分开之后各自的语义才清楚：
 
-- **监督 / 自动下**：审批本身就是边界，沙箱只是双保险 —— 边际收益低，而破坏构建的摩擦成本要全额付。所以沙箱默认关。
-- **全自动下**：没人盯着，沙箱是**唯一**的边界。所以全自动必须打开沙箱，而不是关掉。
+- **要不要弹批准确认** —— 由 `/permission` 三档决定（请求批准 / 帮我批准 / 完全访问）。
+- **命令能不能写出工作区** —— 由沙箱决定，**只在显式配置时才会请求开启**，而且**是否可用取决于运行环境**。
 
-这与 Codex 的做法一致：`--full-auto` = 不问 + workspace-write 沙箱，真正无边界需要另一个刻意更长的 flag。
+**完全访问**不弹批准确认，但**仍遵守已有拒绝规则与运行时自保护**：路径安全、敏感文件拒绝、`deny` 规则、证据追踪、检查点与交付门禁都不受档位影响。
 
-**全自动下仍会询问的，只有 `request_path_access`**（以及 `computer_use` 的 js_eval / browser_adopt）。理由：全自动的意思是「别再为普通工具调用打扰我」，不是「在没人看着的时候悄悄溶解唯一的边界」。
+**沙箱是否真的生效，取决于运行环境**（见 1.1）：macOS 需要 `sandbox-exec`，Linux/WSL 需要 `bwrap` / `firejail` / landlock 三者之一，原生 Windows **没有**可用的轻量级内核 FS 后端（`selectSandboxBackend`，`:351-372`）。请求了沙箱却没有后端时，运行时会在启动时打印一次警告并继续无边界执行（`getSandboxStartupNotice`，`:480-498`）。
+
+**完全访问下仍会询问的，只有 `request_path_access`**（以及 `computer_use` 的 js_eval / browser_adopt）。理由：完全访问的意思是「别再为普通工具调用打扰我」，不是「在没人看着的时候悄悄溶解边界」。
 
 摩擦量级是**每个工作区外路径每工作区一次**，不是每条命令一次：
 
@@ -166,7 +172,7 @@ RIVET_SANDBOX=0 rivet
 
 **无人值守场景**（headless / CI）：没有人能回答提示，所以外出授权会 fail-closed。请预先在配置里声明 `permissions.additionalWriteDirs`（见 2.3），不要指望运行时授权。
 
-**真的想裸奔**：`RIVET_SANDBOX=0` 在任何模式下都优先，包括全自动。此时无写边界、无审批，回滚是唯一安全网。
+**真的想裸奔**：默认就是不请求沙箱。要显式关掉它（此时无写边界，回滚是唯一安全网）：`RIVET_SANDBOX=0`，它优先于任何隐式默认。
 
 ### 2.5 哪些命令不受沙箱保护
 
@@ -199,7 +205,7 @@ RIVET_SANDBOX=0 rivet
 | `manual` | 任何需要审批的工具都弹窗确认 |
 | `suggest` | 只给出建议，不阻塞执行 |
 | `auto-accept` | 自动批准常规审批请求 |
-| `dangerously-skip-permissions` | 跳过所有交互式审批弹窗 |
+| `dangerously-skip-permissions` | 完全访问档：不弹批准确认；已有 `deny` 规则与运行时自保护仍生效 |
 
 切换方式：
 
@@ -427,7 +433,7 @@ jq -r '.deniedPaths[]' ~/.rivet/sandbox-learn.jsonl | sort -u
 - 写文件：默认只能写项目目录
 - 执行命令：开启沙箱后受内核约束写范围；被拒时给出被拒路径与授权路线，而非裸报错
 - 危险命令：无论模式如何，deny 规则和硬编码风险模式都会拦截
-- 外出访问：必须经用户授权或显式配置 —— **全自动也不例外**
+- 外出访问：必须经用户授权或显式配置 —— **完全访问档也不例外**
 - 网络：通常放行（build/test/git 需要）
 
-审批和沙箱是两条轴：**「谁被问」和「能写到哪」**。提高审批自动化程度（自动 `auto-safe` → 隐档 `auto-accept` → 全自动 `dangerously-skip-permissions`）不等于放弃写边界 —— 恰恰相反，越自动越需要边界，所以全自动会自动开启沙箱。要减少摩擦，正确的顺序是补 `permissions.additionalWriteDirs` 和 `bash.allowlist`，而不是关沙箱。
+审批和沙箱是两条轴：**「谁被问」和「能写到哪」**。提高审批自动化程度（默认 `auto-safe` → 隐档 `auto-accept` → 完全访问 `dangerously-skip-permissions`）**不改变**沙箱开关 —— 沙箱只由显式 `RIVET_SANDBOX=1` 请求，且是否可用取决于运行环境。要减少摩擦，正确的顺序是补 `permissions.additionalWriteDirs` 和 `bash.allowlist`；如果你希望「完全访问」场景下仍有内核写边界兜底，显式开 `RIVET_SANDBOX=1`。

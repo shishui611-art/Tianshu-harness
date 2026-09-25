@@ -350,7 +350,7 @@ export function formatGlanceRight(input: GlanceBarInput, theme: RivetTheme): str
 /**
  * 输入框下方常驻权限模式行（CC 的 `⏵⏵ bypass permissions on` 位）。
  * 单一事实来源：GlanceBar 不再显示权限 badge，全部收敛到这一行。
- * 着色沿用旧 badge 映射：自动=muted / ask=warning / 全自动=error / auto-accept=success / plan=primary。
+ * 着色沿用旧 badge 映射：帮我批准=muted / ask=warning / 完全访问=error / auto-accept=success / plan=primary。
  */
 export function formatPermissionModeLine(
   input: { approvalMode?: string; planMode?: boolean; askMode?: boolean; planDraftPath?: string },

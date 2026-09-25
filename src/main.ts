@@ -62,7 +62,13 @@ import {
 } from './agent/plan-mode.js'
 import type { ApprovalMode } from './agent/loop-types.js'
 import { resolveMaxTurns } from './agent/turn-budget-policy.js'
-import { TIER_HINT, TIER_TO_WIRE, formatPermissionLabel, formatTierLabel } from './agent/approval-vocabulary.js'
+import {
+  TIER_HINT,
+  TIER_TO_WIRE,
+  UNATTENDED_SANDBOX_NOTE,
+  formatPermissionLabel,
+  formatTierLabel,
+} from './agent/approval-vocabulary.js'
 import { readFileSync, statSync } from 'node:fs'
 import { join as pathJoin } from 'node:path'
 import { formatWelcome, isMissionLine, missionShimmer, MISSION_SHIMMER_FRAME_MS } from './tui/format/welcome.js'
@@ -1243,9 +1249,9 @@ async function main() {
       if (tuiApp.choicePanelKind === 'permission-yolo-confirm') {
         const entries = [
           { id: 'cancel', label: '取消', description: '保持当前权限模式不变。', current: true },
-          { id: 'confirm-yolo', label: '⚠ 确认进入全自动', description: '无轮次刹车 · 无进度播报 · 所有工具直接执行（沙箱仍拦项目外写入）。回滚兜底：/rollback + git 检查点。也可直接输入 /yes。设为默认后重启仍是全自动。' },
+          { id: 'confirm-yolo', label: `⚠ 确认进入${formatTierLabel('unattended')}`, description: `无轮次刹车 · 无进度播报 · 所有工具直接执行。${UNATTENDED_SANDBOX_NOTE.zh}也可直接输入 /yes。设为默认后重启仍是${formatTierLabel('unattended')}。` },
         ]
-        return { title: '确认全自动 / Confirm Unattended', choices: entries, selectedIndex: 0 }
+        return { title: `确认${formatTierLabel('unattended')} / Confirm ${formatTierLabel('unattended', 'en')}`, choices: entries, selectedIndex: 0 }
       }
       if (tuiApp.choicePanelKind === 'disconnect') {
         // 每次打开重算——配置可能刚被 /connect 改过。
@@ -1521,9 +1527,9 @@ async function main() {
     const applyPermission = (mode: string) => {
       ctx!.agent.setApprovalMode(mode as import('./agent/loop-types.js').ApprovalMode)
       tuiApp.setApprovalMode(mode)
-      // YOLO = 完全权限（免审批 + 全盘无沙箱，2026-09-07 语义）；沙箱仅显式 RIVET_SANDBOX=1。
+      // YOLO = 完全访问档（免审批 + 无写沙箱，2026-09-07 语义）；沙箱仅显式 RIVET_SANDBOX=1。
       applySandboxPolicyForApprovalMode(mode)
-      // YOLO 联动无限轮次：真正全自动，不被 maxTurns 截断。
+      // YOLO 联动无限轮次：完全访问档不被 maxTurns 截断。
       // 其它模式恢复**配置里**的轮次预算（策略单点 agent/turn-budget-policy.ts）——
       // 此前写死 200：用户配的 agent.maxTurns: 500 在面板切一次档就被抹平。
       ctx!.agent.config.maxTurns = resolveMaxTurns(mode, ctx!.config.agent.maxTurns)

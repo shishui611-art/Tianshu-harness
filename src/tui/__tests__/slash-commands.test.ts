@@ -744,7 +744,7 @@ describe('handleSlashCommand', () => {
       assert.ok(entries[0]!.includes('自动匹配'))
     })
 
-    it('/domain shows current domain when set', async () => {
+    it('/domain shows current task mode without persona narrative', async () => {
       const entries: string[] = []
       const handled = await handleSlashCommand(makeCtx({
         parts: ['/domain'],
@@ -755,12 +755,16 @@ describe('handleSlashCommand', () => {
         pushStatic: (entry) => entries.push(entry.content),
       }))
       assert.equal(handled, true)
-      assert.ok(entries[0]!.includes('破军'))
-      assert.ok(entries[0]!.includes('pojun'))
-      assert.ok(entries[0]!.includes('好男儿'))
+      assert.ok(entries[0]!.includes('破军'), '旧星名保留（内部名）')
+      assert.ok(entries[0]!.includes('pojun'), '内部 id 保留')
+      assert.ok(entries[0]!.includes('探索新方案'), '显示名为任务模式名')
+      assert.ok(entries[0]!.includes('适用场景'))
+      assert.ok(entries[0]!.includes('做法'))
+      assert.ok(!entries[0]!.includes('好男儿'), 'motto 不再上屏')
+      assert.ok(!entries[0]!.includes('破军之道'), 'volatileBlock 角色叙事不再上屏')
     })
 
-    it('/domain shows "no domain" when null', async () => {
+    it('/domain shows "no mode" when null', async () => {
       const entries: string[] = []
       const handled = await handleSlashCommand(makeCtx({
         parts: ['/domain'],
@@ -771,7 +775,8 @@ describe('handleSlashCommand', () => {
         pushStatic: (entry) => entries.push(entry.content),
       }))
       assert.equal(handled, true)
-      assert.ok(entries[0]!.includes('无星域'))
+      assert.ok(entries[0]!.includes('任务模式'))
+      assert.ok(entries[0]!.includes('无模式'))
     })
 
     it('/domain list shows all domains including tianshu', async () => {
@@ -863,7 +868,7 @@ describe('handleSlashCommand', () => {
       }))
       assert.equal(handled, true)
       assert.deepEqual(setCalls, [], 'off no longer disables the domain')
-      assert.ok(entries[0]!.includes('未知星域'))
+      assert.ok(entries[0]!.includes('未知任务模式'))
     })
 
     it('/domain <unknown> shows error with valid names', async () => {
@@ -877,8 +882,9 @@ describe('handleSlashCommand', () => {
         pushStatic: (entry) => entries.push(entry.content),
       }))
       assert.equal(handled, true)
-      assert.ok(entries[0]!.includes('未知星域'))
+      assert.ok(entries[0]!.includes('未知任务模式'))
       assert.ok(entries[0]!.includes('pojun'))
+      assert.ok(entries[0]!.includes('探索新方案'), '错误提示同时给出显示名与旧星名/ID')
     })
   })
 

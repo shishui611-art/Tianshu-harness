@@ -6,7 +6,7 @@ const translations: Record<Locale, Record<string, string>> = {
   zh: {
     // Navbar
     'nav.features': '特性',
-    'nav.stars': '星域',
+    'nav.stars': '任务模式',
     'nav.demo': '演示',
     'nav.download': '下载',
     'nav.docs': '文档',
@@ -17,7 +17,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Hero
     'hero.badge': 'MIT 开源 · 终端 AI 编程代理',
     'hero.title': '天枢',
-    'hero.subtitle': '终端里的 AI 编程合伙人',
+    'hero.subtitle': '终端里的 AI 编程代理',
     'hero.desc': '为 DeepSeek V4 前缀缓存优化的开源编程代理。支持多模型路由、子智能体编排、结构化安全机制，让长会话开发高效且可控。',
     'hero.install_hint': '需要 Node.js 20+。也可直接',
     'hero.download_desktop': '下载桌面版',
@@ -31,14 +31,18 @@ const translations: Record<Locale, Record<string, string>> = {
     'trust.tools': '内置工具',
     'trust.opensource': '开源协议',
 
-    // Star Skills
-    'stars.badge': '星域技能',
-    'stars.title': '群星协作，各尽其道',
-    'stars.desc': '天枢不是单一模型，而是一片星图。每颗星承担不同认知职责，在长会话中共同定向、称量、突破与守护。',
+    // Task Modes (section anchor stays `#stars` for link compatibility)
+    'stars.badge': '任务模式',
+    'stars.title': '16 种任务模式，按任务选做法',
+    'stars.desc': '同一个模型，可切换 16 套工作方式。选定一种，进入的是它的适用场景与推进做法——不用每次重新交代怎么干。',
+    'stars.scenario_label': '适用场景',
+    'stars.how_label': '做法',
+    'stars.flows_badge': '常用组合',
+    'stars.flows_title': '四种常用组合',
 
     // Features
     'features.badge': '为长会话编程而生',
-    'features.title': '不只是 AI 助手，是开发伙伴',
+    'features.title': '为长会话而生的编程代理',
     'features.desc': '天枢把上下文当作结构化、可缓存的资源来管理，让每一次代码修改都可控、可回滚、可验证。',
     'feature.cache.title': 'Prefix Cache 引擎',
     'feature.cache.desc': '冻结前缀 + 增量附录，DeepSeek V4 实战命中率高达 95–99%，显著降低长会话成本。',
@@ -67,7 +71,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'download.features_title': '桌面版核心能力',
     'download.feature1': '多会话 Dashboard，实时查看 phase 与进度',
     'download.feature2': 'Artifact 审查与反馈回灌',
-    'download.feature3': '审批 / Intent 介入，diff 可视化',
+    'download.feature3': '审批介入（请求批准 / 帮我批准 / 完全访问），diff 可视化',
     'download.feature4': '定时任务 /schedule，cron 会话管理',
     'download.feature5': '浏览器验证与外部 OAuth 登录',
 
@@ -78,12 +82,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'quickstart.step2_title': '配置 API Key',
     'quickstart.step3_title': '启动',
     'quickstart.docs_link': '完整用户手册',
-    'quickstart.docs_hint': '了解模型配置、Slash 命令与安全审批。',
+    'quickstart.docs_hint': '了解模型配置、任务模式（/task-mode）、Slash 命令与权限三档。',
 
     // FAQ
     'faq.title': '常见问题',
     'faq.q1': '天枢和 Copilot/Cursor 有什么区别？',
-    'faq.a1': '天枢是一个运行在终端/桌面的开源代理，强调「Models as partners」：它拥有认知虚拟机、自感知层和信息素记忆，能在长会话中保持上下文紧凑，并针对 DeepSeek V4 前缀缓存做了深度优化。',
+    'faq.a1': '天枢是一个运行在终端/桌面的开源编程代理。它把任务契约、证据门禁与交付验证做进运行时：长会话里目标不漂移、完成要有证据，并且针对 DeepSeek V4 前缀缓存做了深度优化。它还内置 16 种任务模式——同一个模型可按任务切换不同做法，用 /task-mode 选择。',
     'faq.q2': '使用天枢需要付费吗？',
     'faq.a2': '天枢本身是 Apache-2.0 开源软件，免费使用。你只需要自备模型提供商的 API Key（如 DeepSeek、Claude 等），按需支付给模型提供商。',
     'faq.q3': '支持哪些模型提供商？',
@@ -121,7 +125,7 @@ const translations: Record<Locale, Record<string, string>> = {
   en: {
     // Navbar
     'nav.features': 'Features',
-    'nav.stars': 'Stars',
+    'nav.stars': 'Task Modes',
     'nav.demo': 'Demo',
     'nav.download': 'Download',
     'nav.docs': 'Docs',
@@ -132,7 +136,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Hero
     'hero.badge': 'MIT Open Source · Terminal AI Programming Agent',
     'hero.title': 'Tianshu',
-    'hero.subtitle': 'Your AI Programming Partner in Terminal',
+    'hero.subtitle': 'Your AI Coding Agent in the Terminal',
     'hero.desc': 'An open-source programming agent optimized for DeepSeek V4 prefix caching. Supports multi-model routing, sub-agent orchestration, and structured security mechanisms for efficient and controllable long-session development.',
     'hero.install_hint': 'Requires Node.js 20+. Or directly',
     'hero.download_desktop': 'Download Desktop',
@@ -146,14 +150,18 @@ const translations: Record<Locale, Record<string, string>> = {
     'trust.tools': 'Built-in Tools',
     'trust.opensource': 'Open Source License',
 
-    // Star Skills
-    'stars.badge': 'Star Skills',
-    'stars.title': 'A Constellation of Collaborators',
-    'stars.desc': 'Tianshu is not a single model, but a star chart. Each star holds a different cognitive responsibility, orienting, weighing, breaking through, and guarding together across long sessions.',
+    // Task Modes (section anchor stays `#stars` for link compatibility)
+    'stars.badge': 'Task Modes',
+    'stars.title': '16 Task Modes — Pick One by the Work at Hand',
+    'stars.desc': 'One model, 16 switchable ways of working. Pick a mode and you get its scenario and its way of proceeding — no re-explaining how to work each time.',
+    'stars.scenario_label': 'When to use',
+    'stars.how_label': 'How it proceeds',
+    'stars.flows_badge': 'Common pairings',
+    'stars.flows_title': 'Four common pairings',
 
     // Features
     'features.badge': 'Built for Long-Session Programming',
-    'features.title': 'Not Just an AI Assistant, a Development Partner',
+    'features.title': 'A Coding Agent Built for Long Sessions',
     'features.desc': 'Tianshu treats context as a structured, cacheable resource, making every code modification controllable, rollbackable, and verifiable.',
     'feature.cache.title': 'Prefix Cache Engine',
     'feature.cache.desc': 'Frozen prefix + incremental append, DeepSeek V4 real-world hit rate up to 95-99%, significantly reducing long-session costs.',
@@ -182,7 +190,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'download.features_title': 'Desktop Core Capabilities',
     'download.feature1': 'Multi-session Dashboard, real-time phase and progress viewing',
     'download.feature2': 'Artifact review and feedback injection',
-    'download.feature3': 'Approval / Intent intervention, diff visualization',
+    'download.feature3': 'Approval intervention (Request approval / Approve for me / Full access), diff visualization',
     'download.feature4': 'Scheduled tasks /schedule, cron session management',
     'download.feature5': 'Browser verification and external OAuth login',
 
@@ -193,12 +201,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'quickstart.step2_title': 'Configure API Key',
     'quickstart.step3_title': 'Start',
     'quickstart.docs_link': 'Full User Guide',
-    'quickstart.docs_hint': 'Learn about model configuration, Slash commands, and security approval.',
+    'quickstart.docs_hint': 'Learn about model configuration, task modes (/task-mode), Slash commands and the three permission tiers.',
 
     // FAQ
     'faq.title': 'Frequently Asked Questions',
     'faq.q1': "What's the difference between Tianshu and Copilot/Cursor?",
-    'faq.a1': "Tianshu is an open-source agent running in terminal/desktop, emphasizing 'Models as partners': it has a cognitive VM, self-awareness layer, and pheromone memory, maintaining compact context in long sessions, with deep optimization for DeepSeek V4 prefix caching.",
+    'faq.a1': "Tianshu is an open-source coding agent that runs in the terminal or on the desktop. It builds the task contract, evidence gate and delivery verification into the runtime: goals do not drift across long sessions and completion requires evidence, with deep optimization for DeepSeek V4 prefix caching. It also ships 16 task modes — one model switching to a different way of working per task, picked with /task-mode.",
     'faq.q2': 'Does Tianshu require payment?',
     'faq.a2': 'Tianshu itself is Apache-2.0 open-source software, free to use. You only need to provide your own model provider API Key (like DeepSeek, Claude, etc.) and pay the provider as needed.',
     'faq.q3': 'Which model providers are supported?',

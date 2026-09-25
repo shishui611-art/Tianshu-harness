@@ -32,7 +32,7 @@ Options:
   --stream-events <path>   mirror the run as NDJSON SessionEvents to a file (TUI + -p/--goal)
   --skip-welcome           skip the welcome page
   --screen-reader          screen-reader mode
-  --dangerously-skip-permissions   skip permission prompts (high risk)
+  --dangerously-skip-permissions   start in 完全访问 / Full access (no approval prompts, high risk)
   -h, --help               show this help and exit
   -v, --version            print version and exit
 `

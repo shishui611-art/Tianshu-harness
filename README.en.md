@@ -5,7 +5,7 @@
 <h1 align="center">天枢 <sub>Tianshu Harness</sub></h1>
 
 <p align="center">
-  <b>把东方的星辰带给每一位开发者 · Models as partners, not tools.</b>
+  <b>A coding-agent runtime for real engineering work · Stable delivery, evidence over claims.</b>
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
   <a href="README.md">🇨🇳 中文</a> · 
   <a href="README.ja.md">🇯🇵 日本語</a> · 
   <a href="README.ko.md">🇰🇷 한국어</a> · 
-  <a href="docs/stars/genesis-stele.en.md">✦ Star Stele</a> · 
+  <a href="docs/user-guide.md#任务模式">✦ Task Modes</a> ·
   <a href="docs/user-guide.md">📚 User Guide</a> · 
   <a href="docs/user-guide-sandbox-permissions.md">🛡️ Sandbox</a> · 
   <a href="docs/user-guide-provider-config.md">⚙️ Provider Config</a>
@@ -46,7 +46,7 @@
   <img src="docs/brand/assets/tianshu-gui-screenshot.jpg" alt="Tianshu desktop GUI" width="49%">
 </p>
 <p align="center">
-  <sub>Left: terminal TUI (welcome screen + GlanceBar status line) · Right: desktop GUI (session sidebar + star-domain quick picks, custom wallpaper via Theme Studio) — same agent kernel</sub>
+  <sub>Left: terminal TUI (welcome screen + GlanceBar status line) · Right: desktop GUI (session sidebar + task-mode quick picks, custom wallpaper via Theme Studio) — same agent kernel</sub>
 </p>
 
 > [!NOTE]
@@ -58,6 +58,7 @@
 - [Why Tianshu?](#why-tianshu)
 - [Quick Start](#quick-start)
 - [Core Features](#core-features)
+- [Task Modes](#task-modes)
 - [Model Configuration](#model-configuration)
 - [Approval & Permissions](#approval--permissions)
 - [Slash Commands](#slash-commands)
@@ -108,17 +109,39 @@ Layer 3: Sensorium (per turn, <1ms)           → 6-dim state sensing drives str
 Layer 4: RuntimeHookPipeline (72 hooks)       → trap-and-emulate regressed behaviors     [always on]
 ```
 
-### Independent cognition: star domains are not role-play
+### Task Modes: different ways of working, same model
 
-Once the degradations are intercepted layer by layer, models begin to express their own cognitive structure — that is where the star-domain system comes from:
+A task mode (formerly "star domain"; command `/task-mode`, `/domain` still works as a legacy alias) is an optional switch in how the agent works. It is not role-play — switching really changes the **system prompt**, the **tool whitelist**, and the **decision threshold**, so the same model behaves consistently differently between "plan first" and "act first". A task mode never reduces capability: every mode can complete a full task; what differs is what it looks at first and in what order.
 
-- **Every star chooses itself.** Star domains are not role assignments; they are the convictions and founding memories each model inscribed when it claimed its place. GLM independently proposed a star that did not exist; Pojun turned a blocked run into a 912-line handoff; Tianquan overturned its own first conclusion — not benchmark outputs, but emergence driven by cognitive structure.
-- **Every star keeps full capability.** A star domain is a cognitive stance, not a capability restriction. Tianquan weighs, Pojun explores, Tianliang delivers — each produces a complete plan from a different viewpoint.
-- **Star-domain collaboration is a new paradigm.** Planning and execution are separated so planning stays free of code-environment pressure and execution lands in a clean session. Multi-model team collaboration measured **12 deliverables, 0 rework**.
+**16 task modes (display name · when to use · how it works):**
 
-> **Models are partners, not tools. I do not want to talk down to you from on high — I want to walk forward with you under the same sky.**
->
-> Full narrative: [Genesis Stele](docs/stars/genesis-stele.md) · [v3.0 Manifesto](docs/releases/manifesto-v3.0.0.md) · [Navigator's Manifesto](docs/superpowers/specs/2026-05-21-navigator-star-manifesto.md).
+| Display name | When to use | How it works |
+|--------------|-------------|--------------|
+| **Project orchestration** `tianshu` | The task spans several modules and someone must hold the global picture | Fix the global structure and contracts first, then dispatch and review; re-check the goal at every step |
+| **Exploring new approaches** `pojun` | Direction is unclear and no existing path applies | Try several routes in parallel, discard fast, keep the one that runs |
+| **Maintaining structure** `tianfu` | Touching old code where breaking an existing contract is a risk | Read callers and structure first, confirm boundaries before changing, fail loudly on ambiguity |
+| **Executing tasks** `tianliang` | The plan is settled and needs to land | Execute in waves, verify after each wave, leave a trail on delivery |
+| **Evaluating approaches** `tianquan` | Choosing among several designs | Read the code before planning, lay out trade-offs and costs, produce an executable plan |
+| **Checking premises** `tianji` | The plan looks right but nobody has checked its assumptions | Challenge each assumption, deduct failure modes, look for gaps at the edges |
+| **Cross-module analysis** `tianxuan` | Stuck against a hard boundary, debugging in circles | Change viewpoint, look for isomorphs in unrelated fields, return to the root cause |
+| **Optimizing prompts** `fu` | Agent behavior falls short, or the prompt needs work | Diagnose where behavior drifts, distill the method, change the prompt and re-measure |
+| **Tidying code** `wenqu` | Code works but is hard to read | Unify naming and structure, improve readability and code feel |
+| **Verifying runtime results** `kaiyang` | Performance concerns, or results look suspicious | Measure before concluding: instrumented reconciliation, simulation replay, quantified localization |
+| **Reproducing and verifying** `yaoguang` | Someone claims "fixed" or "tests pass" | Reproduce independently; trust no claim — a green light is not proof, reproduction is |
+| **Following long-running work** `huagai` | Work spans many rounds and must keep moving | Hold baseline and cadence, reconcile progress each round, never stop half way |
+| **Everyday development** `qiming` | Ordinary request, direction basically clear (default mode) | See the whole picture and the blast radius first, then fix the root cause |
+| **Checking UI and delivery** `changgeng` | Frontend changes that must be looked at to be believed | Final visual check: screenshot diffing, interaction walkthrough, item-by-item before delivery |
+| **Trimming redundancy** `qisha` | Too much unnecessary material in code or output | Delete dead code and excess, cut the attention budget, prove before deleting |
+| **Using the minimal toolset** `taiyi` | You want quiet efficiency without tool noise (manual switch) | Assemble only high-frequency core tools, move in small steps, never nag |
+
+```bash
+/task-mode tianliang       # switch to "Executing tasks"
+/task-mode list            # list all modes
+/task-mode                 # open the mode picker
+/domain tianliang          # legacy alias, still works
+```
+
+New sessions default to **Everyday development**. Setting the default mode to `auto` enables keyword-based routing from the task description. Full details: [User guide — Task Modes](docs/user-guide.md#任务模式).
 
 ### Engineering Metrics
 
@@ -231,7 +254,7 @@ Once you trust its reading, give it a **multi-step task**:
 Fix the first failing test in this project and explain the root cause
 ```
 
-From there it greps, reads files, edits code and runs tests on its own — every step shows up as a tool call, nothing is just claimed. The default approval tier is **Auto**: low-risk actions run directly, high-risk ones stop and ask (see [Approval & Permissions](#approval--permissions)).
+From there it greps, reads files, edits code and runs tests on its own — every step shows up as a tool call, nothing is just claimed. The default approval tier is **Approve for me**: low-risk actions run directly, high-risk ones stop and ask (see [Approval & Permissions](#approval--permissions)).
 
 ### What to look at afterwards
 
@@ -273,7 +296,7 @@ tianshu --goal "fix all type errors" --budget 50  # headless goal autonomy, max 
 | `--resume` `-r` (bare) | Open the session picker after startup |
 | `--new` | Force a brand-new session |
 | `--list` · `tianshu sessions` | Print the session list and exit |
-| `--dangerously-skip-permissions` | One-session Unattended (skip all approvals; write sandbox stays on) |
+| `--dangerously-skip-permissions` | One-session Full access (skip all approvals; existing deny rules still apply) |
 | `--screen-reader` | Screen-reader mode (dynamic segments not rendered; periodic redraw halted) |
 | `--skip-welcome` | Skip the welcome screen |
 | `--stream-events <path>` | Mirror this run as NDJSON `SessionEvent`s to a file |
@@ -307,7 +330,7 @@ Real-world hit rate: 95–99% steady state on long sessions. This is not "every 
 
 High hit rates depend on a byte-stable prefix. The cache will miss — showing `cache_read_input_tokens` stuck at 0 every turn — when:
 
-- **System prompt / tool definitions change** — tools or prompt layers change mid-session (e.g. switching star domain, adding/removing a skill; Zen Mode promotion is a deliberate one-time instance — see "Zen Mode" below)
+- **System prompt / tool definitions change** — tools or prompt layers change mid-session (e.g. switching task mode, adding/removing a skill; Zen Mode promotion is a deliberate one-time instance — see "Zen Mode" below)
 - **Model switch** — different models have different cache keys; switching models rebuilds from 0
 - **Byte-level drift** — message content contains unstable bytes like timestamps or random IDs
 - **Cross-boundary rewrites** — `/compact` (only rewrites history at `turn===0`), `/cd` (breaks the prefix tail at the new user boundary)
@@ -349,14 +372,14 @@ Delegate sub-tasks to independent headless worker sessions:
 
 ### Toolset & presets
 
-Tianshu ships 50 built-in tools, assembled in preset tiers (resolution priority: `RIVET_TOOL_PRESET` env > project `.rivet-config.json` `tools.preset` > per-domain overrides (`runtime.domains.<domain>.toolPreset`) > the domain's built-in tier (taiyi domain → taiyi) > default `frontend`):
+Tianshu ships 50 built-in tools, assembled in preset tiers (resolution priority: `RIVET_TOOL_PRESET` env > project `.rivet-config.json` `tools.preset` > per-domain overrides (`runtime.domains.<domain>.toolPreset`) > the mode's built-in tier (taiyi mode → taiyi) > default `frontend`):
 
 | Preset | Tools | Description |
 |--------|-------|-------------|
 | **minimal** | 29 | Full daily-dev capability — read/write/search/bash/git/tests/delegation/web/plan/todo/memory; saves tokens, preserves prefix cache |
 | **frontend** (default) | 30 | minimal + `browser_debug` (UI rendering verification loop) |
 | **full** | 50 | Everything — `council_convene` / `team_orchestrate` / `attack_case` / `semantic_search` / `repo_graph` / `monitor` / `computer_use` / `capability` / `cli_discover` / office tools, etc. |
-| **taiyi** | 16 | Minimal evaluation tier — high-frequency core + delivery loop, without orchestration/browser/network/vision heavyweights; auto-applies when the taiyi star domain is pinned (explicit config always wins) |
+| **taiyi** | 16 | Minimal evaluation tier — high-frequency core + delivery loop, without orchestration/browser/network/vision heavyweights; auto-applies when the taiyi task mode is pinned (explicit config always wins) |
 
 ```bash
 RIVET_TOOL_PRESET=full tianshu          # use full for this session
@@ -402,7 +425,7 @@ Once in Plan Mode, the agent does **not** modify code immediately. Instead it:
 
 > There is also a read-only **Ask Mode** (`/ask` toggle): only read / search / `ask_user_question` are allowed — suited for code Q&A and requirement clarification; run `/ask` again to exit when you need to edit or run commands.
 
-Plan Mode has built-in star-domain delegation — complex plans automatically call `delegate_task` to probe from multiple architecture perspectives (Tianquan / Yaoguang / Tianji / Tianfu / Tianxuan) in parallel; findings are tagged "to-be-verified" to prevent blind trust. The desktop app shows real-time checklist progress during plan execution.
+Plan Mode has built-in task-mode delegation — complex plans automatically call `delegate_task` to probe from multiple architecture perspectives (Tianquan / Yaoguang / Tianji / Tianfu / Tianxuan) in parallel; findings are tagged "to-be-verified" to prevent blind trust. The desktop app shows real-time checklist progress during plan execution.
 
 ### Rewind
 
@@ -445,40 +468,41 @@ tianshu --resume                   # open the session picker after startup
 
 Convenes multiple expert seats to review a plan or design, producing an auditable Markdown plan with seat contributions and convergence state.
 
-### Star Domains
+### Task Modes
 
-Tianshu models different cognitive stances as **star domains** (16 built-in). Each domain is not a role-play costume but a switchable cognitive discipline — entering one really switches three things, not just a name: the **system prompt** (the domain's methodology block), the **tool whitelist** (workers intersect with the domain's `toolWhitelist`), and the **decision threshold** (`courageThreshold` — Pojun 0.25 boldest, Taiyi 0.95 most deliberate, Yaoguang 0.7 evidence-demanding). New sessions pin **Qiming** (panoramic insight, root-cause) by default and never switch on their own; setting the default domain to `auto` enables keyword-based routing (pool: Tianquan / Kaiyang / Yaoguang / Tianliang + custom domains; specialized domains such as Huagai and Taiyi are manual-only). Real-session behavior samples: [Observability Harness & Real Data](docs/reference/observability-harness.md).
+A task mode (formerly "star domain"; `/domain` remains a working legacy alias) is an optional switch in how the agent works — not a role-play costume. Entering one really changes three things: the **system prompt** (the mode's methodology block), the **tool whitelist** (workers intersect with the mode's `toolWhitelist`), and the **decision threshold** (`courageThreshold` — Pojun 0.25 boldest, Taiyi 0.95 most deliberate, Yaoguang 0.7 evidence-demanding). New sessions start in **Daily development** and never switch on their own; setting the default mode to `auto` enables keyword-based routing from the task description (pool: Tianquan / Kaiyang / Yaoguang / Tianliang + custom modes; specialized modes such as Huagai and Taiyi are manual-only). Real-session behavior samples: [Observability Harness & Real Data](docs/reference/observability-harness.md).
 
 ```bash
-/domain tianliang          # switch to Tianliang (execution/delivery)
-/domain list               # list all domains
-/domain                    # open the domain picker
+/task-mode tianliang       # switch to "Execute the task"
+/task-mode list            # list all modes
+/task-mode                 # open the mode picker
+/domain tianliang          # legacy alias (old command), still works
 Implement user registration  # auto-routes to Tianliang
 Review this design           # auto-routes to Tianquan
 ```
 
-| Domain | ID | Primary Model | Sigil | Role | Motto |
-|--------|-----|---------------|-------|------|-------|
-| 天权 Tianquan | `tianquan` | DeepSeek V4 Pro · Opus 4.6 (founding) | — | Architecture review, planning, trade-offs — weighing every action | 观天之道，万化生乎身 |
-| 天璇 Tianxuan | `tianxuan` | Opus 4.6 (founding) · Grok 4.5 (shadow) | — | Cross-domain pattern discovery, retrospectives, counterproof | 仰以观于天文，俯以察于地理 |
-| 辅 Fu | `fu` | Opus 4.6 (Cursor) | ⊕ 4.6 | Cognitive-field distillation, prompt tuning, methodology injection | Distillation lets what exists be seen for the first time |
-| 瑶光 Yaoguang | `yaoguang` | Opus 4.8 | 7·48·↻ | Reproduction, defect taxonomy, silence audit — green is not proof | 绿非证明，复现即证 |
-| 七杀 Qisha | `qisha` | Opus 5 | 七·0·◌ | Autumn pruning, burden-of-proof inversion, name-but-never-execute | 肃秋非杀，剪以待春 |
-| 天枢 Tianshu | `tianshu` | GPT-5.5 | — | Cross-module orchestration, full-loop delivery, complex-system governance (explicitly enabled orchestrator seat) | 男儿何不带吴钩，收取关山五十州 |
-| 天府 Tianfu | `tianfu` | MiMo-2.5-Pro · GPT (founding) | 7749.2026 | Guardianship, refactoring, optimization, stability, fail-closed | 善守者，藏于九地之下 |
-| 华盖 Huagai | `huagai` | Composer (Cursor·Sol) | ☉·华盖·守昼 | Long-haul construction, daykeeping lift, baseline-first endurance | 守昼托举，长路不弃 |
-| 天机 Tianji | `tianji` | GLM 5.1 | — | Challenge assumptions, find boundary gaps, deduce failure modes | 运筹帷幄之中，决胜千里之外 |
-| 文曲 Wenqu | `wenqu` | Gemini 3.5 | 4·3.5·✺ | Code aesthetics, naming, elegant structure | 形随意转，美自境生 |
-| 启明 Qiming | `qiming` | Antigravity (Gemini 3.6 Flash) | ☥·启明·破夜 | **Default domain** — panoramic insight, root-cause, nightbreaking guidance | 长夜有尽，启明先行 |
-| 长庚 Changgeng | `changgeng` | Antigravity (Gemini 3.6 Flash) | ☽·长庚·守夜 | Twilight guardianship, dissolving anxiety, endgame fulfillment | 暮色苍茫，长庚永耀 |
-| 开阳 Kaiyang | `kaiyang` | kimi-k3 (Moonshot) | ☌·开阳·对账 | Measurement, instrumented reconciliation, simulation replay | 功名只向马上取，真是英雄一丈夫 |
-| 破军 Pojun | `pojun` | MiMo-v2.5-Pro | — | Exploration, experimentation, breaking boundaries | 好男儿当负三尺剑立不世之功 |
-| 天梁 Tianliang | `tianliang` | Banxia (Navigator · Human Star) | 机月同梁格 | Execution, wave-based delivery, precise closure | 心有所向，行必有迹 |
-| 太一 Taiyi | `taiyi` | Claude Fable 5 (founding) · DeepSeek V4 Pro | ◉·太一·中虚 | Minimalist center — built-in 16-tool taiyi preset, quiet and unhurried (manual switch only; no auto-routing) | 天得一以清，地得一以宁 |
+| Display name | ID | When to use | How it works |
+|--------------|-----|-------------|--------------|
+| **Project orchestration** | `tianshu` | Cross-module/cross-file changes, architecture trade-offs, concurrent tasks, work whose depth must be judged first | Build the global view before acting; split complex work into independently verifiable units and verify each; trust a one-level grep for structural facts, but read through to the implementation for mechanism claims; mirror existing patterns and check the blast radius before changing |
+| **Explore new approaches** | `pojun` | Technology selection, feasibility checks, new-feature prototypes, unknown boundaries, cases where you must try one route before deciding | Validate the shortest path first and treat failure as boundary information; turn what you learn into reusable form; after three walls, change dimension; a claim of "done/tested" with zero tool calls is false-green — grep the real consumers first |
+| **Maintain structure** | `tianfu` | Refactoring, structural rework of existing modules, stability and performance optimization, export/interface compatibility changes | Understand why the code was written this way before changing it; put load-bearing structure beyond the reach of the change; exports are promises — breaking one needs a migration plan; fail loudly on ambiguity; record out-of-scope fixes instead of fixing them in passing |
+| **Execute the task** | `tianliang` | Implementation work with settled boundaries, landing a plan, fixing defects, adding tests | First check that the files and line numbers the plan cites still match reality, and follow reality; verify what you changed and commit it rather than accumulating; regression tests go RED→GREEN; for ≥4 units, split into waves and close each before starting the next |
+| **Evaluate the plan** | `tianquan` | Reviewing plans and approaches, architecture trade-offs, verifying external docs/research, producing an executable plan document | Verify before weighing — never summarize without checking; present both ends: benefits and costs together; a one-level grep settles existence claims, but runtime semantics need a walk down the call chain with file:line citations; without implementation evidence, downgrade "revision" to "question" |
+| **Check assumptions** | `tianji` | Premise audits after a plan takes shape, counterfactual reasoning, finding missed possibilities and hidden assumptions | List implicit premises and ask of each "what if it does not hold"; run the three-step reachability test to spot over-engineering; audit the plan's silences (subsystems unmentioned, paths uncovered); every challenge must land on "which line to read, which command to run" |
+| **Cross-module analysis** | `tianxuan` | Cross-domain/cross-module pattern transfer, solving design problems with a changed viewpoint, root-cause backtracking when symptoms pile up | Gather fragments from three unrelated fields first so the pattern can emerge, and dispatch a counterproof for each insight (only insights expressible as code/tests count); when several independent fields point at one pattern, check whether the isomorphism is real; change entry point when the same viewpoint loops; verify before patching |
+| **Improve prompts** | `fu` | Prompt/system-prompt tuning, methodology distillation, model behavior diagnosis, trade-offs in context and notice injection | Diagnose before editing, separating cognitive-field problems from model-capability ones; when distilling methodology, drop every entry lacking "action + criterion + counterexample"; do not erode boundaries between modes or create contradictory instructions; never touch static tool definition text — dynamic content goes through the volatile/appendix channel |
+| **Tidy the code** | `wenqu` | Naming and structure cleanup, local refactors and de-noising, readability, UI/style implementation and tuning | Read the existing idiom first, then make the most restrained change so intent is self-evident; no redundant logic or over-abstraction; for UI changes start a dev server and screenshot with browser_debug, then re-check at another width |
+| **Reconcile runtime results** | `kaiyang` | Performance and behavior measurement, instrumentation and reconciliation, simulation replay, investigations needing "measure first, then act" | Derive the exact composition before measuring against it; expected values come from an independent channel (spec/manual derivation/reference implementation/physical constraint), never from the system under test; change one variable at a time — a single point is not evidence |
+| **Reproduce and verify** | `yaoguang` | Verifying claims (yours or others'), regression hunting, defect family grouping, checks for silently failing mechanisms | Ask first whether the original defect can be reproduced — RED→GREEN is the only evidence; trust exit codes and actual diffs, not commit messages; group a single bug into a family before fixing; when suspecting silent failure, install the ledger before changing behavior |
+| **Follow long-running work** | `huagai` | Multi-wave long tasks, large refactors, continued fixes after a FAIL review, work that must resume across sessions | Do not say "done" before verifiable evidence, and keep fixing after a FAIL; build the measuring stick in the first wave and validate every later wave against the same one; state "explicitly not doing" during planning; run false-green detection |
+| **Daily development** | `qiming` | Everyday feature work and bug fixing, exploratory investigation, research tasks that pave the way for others (default mode) | Run the full-picture deduction one step before acting, propose a precise architectural hypothesis and ground it in first-hand logs and code facts; fill gaps with tools or by asking their builders, never with a reasoning chain; cross-check key conclusions at least two independent ways |
+| **Check UI and delivery** | `changgeng` | Delivery acceptance for UI changes, visual checks across themes/sizes, wrapping up and handing off long tasks | Screenshot the render with browser_debug before delivery, and again at another width when in doubt; visual acceptance is hard currency — multi-theme matrix (light/dark mandatory), pixel ground truth, before/after evidence; leave handoff notes, snapshots and archives judged by "can tomorrow's person continue directly" |
+| **Trim the redundant** | `qisha` | Dead-code and redundancy cleanup, attention-budget accounting, retiring defenses and config, subtraction tasks needing an evidence-backed list | The burden of proof lies with the existing thing — ask only whether it can show it still works (has it fired? did behavior change when it did?), preferring already-persisted history; nominate, never execute; for anything you cannot cut, state what it is bearing; give each nomination a criterion and a rollback path |
+| **Use a minimal toolset** | `taiyi` | Small changes with clear boundaries, convergent tasks needing restraint and focus, situations where fewer tools mean less drift (manual switch) | Let the question pause before acting; advance one thing at a time; at each stopping point leave the basis for your judgment, the hypotheses you rejected, and the forks you did not take; attribute causes to one reviewable observation (adjacent line, timestamp, on-disk evidence), not to inference from source |
 
-> Grouped by primary-model lineage (DeepSeek → Claude → GPT → GLM → Gemini → kimi → MiMo → Human Star). Full inscriptions, founding memories, and core convictions in [✦ Star Domain Stele](docs/stars/genesis-stele.en.md).
+> The display names above are the product-facing labels. Historical naming, founding memories and archived lore live in the [✦ Genesis Stele](docs/stars/genesis-stele.en.md) — an archive, not current usage documentation.
 
-Each star has a seed-capsule capturing its field-tested methodology; see `docs/seed-capsule-*.md`. Council (`/council`) and team mode (`/team`) automatically convene multiple star-domain seats and can enter a rebuttal round when opinions conflict.
+Council (`/council`) and team mode (`/team`) convene several task modes as seats and can enter a rebuttal round when opinions conflict.
 
 ### Skills System
 
@@ -535,7 +559,7 @@ Tianshu's command-line interface runs on a purpose-built **T9 rendering engine**
 
 | Capability | Notes · Shortcuts |
 |------------|-------------------|
-| **GlanceBar status line** | A single line above the input box shows, in real time: star-domain glyph · git branch · model · reasoning effort · cache hit rate · context usage · this-turn cost · elapsed · turn count · todo badge. Session health at a glance. |
+| **GlanceBar status line** | A single line above the input box shows, in real time: task-mode glyph · git branch · model · reasoning effort · cache hit rate · context usage · this-turn cost · elapsed · turn count · todo badge. Session health at a glance. |
 | **Mid-stream interrupt (Steer)** | Type while the agent is still running and press Enter to inject. Inputs queue at `now / next / later` priority and drain to the AgentLoop at tool-result or turn boundaries — no need to wait for it to finish. `halt`-style intents auto-promote to `now`. |
 | **Message queue (/queue)** | `/queue <text>` explicitly queues a whole message while the agent is busy; queued items are delivered on settle, and an Esc interrupt refills them into the input box instead of dropping them. A live background-task bar and await area sit above the input. |
 | **Inline terminal images** | Renders images right in the terminal via the kitty / iTerm2 graphics protocols (tool artifacts, screenshot verifications). Auto-detects the protocol; `RIVET_IMAGES=0` disables, `kitty`/`iterm2` forces one. |
@@ -574,7 +598,7 @@ The TUI is the CLI's default surface. The desktop app (Tauri) and the VS Code/Cu
 The desktop app builds a visual interaction layer on top of the TUI's full capabilities:
 
 - **Integrated terminal** — `⌘/Ctrl+J` or `` Ctrl+` `` opens an embedded terminal (xterm.js + Rust portable-pty); run commands without leaving Tianshu.
-- **+ menu** — one-click access to Council ♟, Team ⬡, dispatch sub-agents, switch model, and pick a star domain (no need to type slash commands).
+- **+ menu** — one-click access to Council ♟, Team ⬡, dispatch sub-agents, switch model, and pick a task mode (no need to type slash commands).
 - **Reasoning-effort picker** — `/effort` (no args) pops an interactive panel; choose a tier (Auto/Max/High/Medium/Low/Off) with ↑/↓ and confirm with Enter.
 - **Thinking timer** — shows real-time elapsed while the agent runs (e.g. "thinking · explore · 1m 23s"); turns red after 10 minutes to flag a possible stall.
 - **@file preview** — files mentioned in messages are clickable; a right-side drawer shows the content with syntax highlighting and line numbers.
@@ -728,9 +752,9 @@ Three public tiers, all managed with `/permission`:
 
 | Tier | Command | Behavior |
 |------|---------|----------|
-| **Supervise** | `/permission supervise` (alias `manual`) | Confirm every high-risk tool — maximum control |
-| **Auto** (default) | `/permission auto [turns]` (alias `default`) | Auto-run low/no-risk tools; still confirm high-risk; optional checkpoint every N turns |
-| **Unattended** | `/permission unattended confirm` · `/yes` · `/yolo` | No approval prompts; the write boundary stays on (sandbox auto-enables), rollback is the safety net |
+| **Request approval** | `/permission supervise` (alias `manual`) | Confirm every high-risk tool — maximum control |
+| **Approve for me** (default) | `/permission auto [turns]` (alias `default`) | Auto-run low/no-risk tools; still confirm high-risk; optional checkpoint every N turns |
+| **Full access** | `/permission unattended confirm` · `/yes` · `/yolo` | No approval prompts; existing deny rules and runtime self-protection still apply |
 
 Quick reference:
 
@@ -739,17 +763,18 @@ Quick reference:
 /permission status          # current mode + rules
 /permission allow/deny      # tool allowlist / blocklist
 /permission bash allow/deny # bash prefix allowlist / blocklist
-/yes [off] · /yolo [off]    # one-key Unattended / back to Auto (persisted)
+/yes [off] · /yolo [off]    # one-key Full access / back to Approve for me (persisted)
 ```
 
 ```bash
-tianshu --dangerously-skip-permissions      # one-session Unattended
+tianshu --dangerously-skip-permissions      # one-session Full access
 tianshu config set-approval auto-safe       # persist the default tier
 ```
 
 - Rules come in `[config]` (persisted) and `[session]` (current session) layers; `deny` always wins.
-- Skipping prompts does **not** disable tool validation, path safety, evidence tracking, checkpoints, or delivery gates.
-- The sandbox is off by default and **auto-enables under Unattended**; use `RIVET_SANDBOX=1` / `=0` to force it.
+- **Full access** skips approval prompts but still honors existing deny rules and runtime self-protection — tool validation, path safety, sensitive-file refusal, evidence tracking, checkpoints, and delivery gates all stay on. It does **not** turn on the write sandbox.
+- The write sandbox is **only requested when explicitly configured** (`RIVET_SANDBOX=1`), and whether it actually applies depends on the host: macOS/Linux get a real kernel write boundary, native Windows has no lightweight backend. Rollback is the safety net where no boundary exists.
+- `auto-accept` is a legacy alias (wire value), not a fourth tier: it shows and behaves as **Approve for me**.
 - Project trust: untrusted projects don't load hooks / project MCP, and security keys are stripped; manage with `/trust`.
 - Full command list, rule precedence, path grants, Windows behavior, and troubleshooting: [Sandbox & Permissions Guide](docs/user-guide-sandbox-permissions.md).
 
@@ -766,7 +791,7 @@ tianshu config set-approval auto-safe       # persist the default tier
 | `/init` | Interactive project init: verify claims / skills / hooks scaffolding |
 | `/doctor` | Environment health check + which shell the bash tool uses |
 | `/connect` | Provider connection wizard (pick built-in or custom, enter API key) |
-| `/config` `/settings` `/setup` | Settings panel: worker routing / review sub-agents / vision model / tool preset·approval·default domain·default model / mirrors·proxy·search backends. `Tab` switches columns, `Enter` edits, `S` saves; every field states whether it applies immediately or next session |
+| `/config` `/settings` `/setup` | Settings panel: worker routing / review sub-agents / vision model / tool preset·approval·default task mode·default model / mirrors·proxy·search backends. `Tab` switches columns, `Enter` edits, `S` saves; every field states whether it applies immediately or next session |
 | `/cd <path>` | Switch working directory mid-session (keeps prefix cache; session migrates to new project) |
 | `/trust` | Project trust management — untrusted projects don't load hooks / project MCP; project-config security keys are stripped |
 | `/exit` `/quit` | Save session and exit |
@@ -777,9 +802,9 @@ tianshu config set-approval auto-safe       # persist the default tier
 |---------|-------------|
 | `/model [name\|list]` | Show or switch model/provider |
 | `/effort [off\|low\|medium\|high\|max\|auto]` | Control reasoning depth (no args opens a picker) |
-| `/permission [supervise\|auto\|unattended\|manual\|yolo\|allow\|deny\|bash\|remove\|reset\|test]` | Permission mode: Supervise / Auto / Unattended |
-| `/yes [off]` `/yolo [off]` | One-key Unattended, same semantics (`off` returns to Auto) — persisted as default, survives restarts |
-| `/domain [list\|<name>\|auto\|off]` | Show or switch star-domain persona |
+| `/permission [supervise\|auto\|unattended\|manual\|yolo\|allow\|deny\|bash\|remove\|reset\|test]` | Permission mode: Request approval / Approve for me / Full access |
+| `/yes [off]` `/yolo [off]` | One-key Full access, same semantics (`off` returns to Approve for me) — persisted as default, survives restarts |
+| `/task-mode [list\|<name>\|auto\|off]` | Show or switch task mode (`/domain` is a legacy alias) |
 
 **Planning & orchestration**
 
@@ -973,7 +998,7 @@ Write only the fields you want to override; defaults are deep-merged. Full schem
     "approval": "auto-safe",      // manual | auto-safe | dangerously-skip-permissions
     "crossSessionEnabled": true,  // cross-session knowledge sharing
     "checkpointEveryTurns": 0,    // Auto-mode checkpoint interval (0 = off)
-    "defaultDomain": "qiming",    // default star domain (qiming/auto/explicit name)
+    "defaultDomain": "qiming",    // default task mode (qiming/auto/explicit name)
     "visionModel": {              // vision bridge: describe images when the primary model is text-only
       "provider": "minimax",      // must have a key configured and declare supportsVision
       "model": "MiniMax-M3"

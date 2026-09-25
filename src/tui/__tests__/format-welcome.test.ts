@@ -161,8 +161,7 @@ test('单一 accent 纪律:chroma 只出现在 brandColor 与受控位', () => {
 
 // ── guide 首启引导版(P1-1) ─────────────────────────────────
 test('guide 全妆:16 行(引导块替换提示区),80 列全内容', () => {
-  // 布局契约用中性 voice 主题渲染——默认主题 2026-09 改 cyberpunk(tech voice,
-  // intro 变 Nova 台词),布局测试不该随默认主题漂移;voice 变体另有专测。
+  // 2026-09 去人设：guide intro 在所有主题下同一套中性文案，布局不再随主题漂移。
   const lines = render({ guide: true }, THEMES.graphite.truecolor)
   assert.equal(lines.length, 16, `guide 全妆 16 行,实得 ${lines.length}`)
   assert.equal(lines[0], '', '首行留空')
@@ -186,15 +185,18 @@ test('guide 随 compact/窄/矮 正常降级(不残留半套引导)', () => {
   assert.equal(render({ guide: true, columns: 100, rows: 17 }).length, 1, '矮终端退单行')
 })
 
-test('guide voice 角色化:pastel→星灵小天 / cyberpunk→Nova / 默认中性不变', () => {
-  // default voice(graphite):现有测试已锁「终端里的 AI 工程师」——此处锁变体
-  const pastel = formatWelcome({ ...base, guide: true } as never, THEMES.pastel.truecolor)
-  assert.ok(strip(pastel.join('\n')).includes('小天'), 'playful 星灵人设 intro')
-  const cyber = formatWelcome({ ...base, guide: true } as never, THEMES.cyberpunk.truecolor)
-  assert.ok(strip(cyber.join('\n')).includes('Nova'), 'tech Nova 人设 intro')
-  // 变体不破坏结构:行数/示例仍在
-  assert.equal(pastel.length, 16, 'pastel guide 仍全妆 16 行')
-  assert.ok(strip(pastel.join('\n')).includes('看看这个项目的结构'), '示例保留')
+test('guide 去人设:所有主题走同一套中性 intro,不出现角色自称', () => {
+  // 2026-09 去人设后，pastel/cyberpunk 等风格化主题不再产出角色台词。
+  const themes = ['graphite', 'pastel', 'cyberpunk', 'gemini'] as const
+  for (const name of themes) {
+    const lines = formatWelcome({ ...base, guide: true } as never, THEMES[name].truecolor)
+    const joined = strip(lines.join('\n'))
+    assert.ok(!joined.includes('小天'), `${name} 不应出现「小天」角色自称`)
+    assert.ok(!joined.includes('Nova'), `${name} 不应出现「Nova」角色自称`)
+    assert.ok(joined.includes('终端里的 AI 工程师'), `${name} 应回落中性 intro`)
+    assert.equal(lines.length, 16, `${name} guide 仍全妆 16 行`)
+    assert.ok(joined.includes('看看这个项目的结构'), `${name} 示例保留`)
+  }
 })
 
 test('guide 44-58 列:关键引导在、示例按档省略、不折行', () => {
